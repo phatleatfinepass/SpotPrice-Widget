@@ -21,11 +21,13 @@ Glanceable Finland electricity prices and grid conditions for macOS and iOS. The
 
 ## Download for macOS
 
-Download the latest signed and notarized release:
+Download the latest Universal direct release:
 
 [**Download Finland Electricity Rates for macOS**](https://github.com/phatleatfinepass/SpotPrice-Widget/releases/latest/download/Finland-Electricity-Rates.dmg)
 
 Open the disk image and drag **Finland Electricity Rates** to Applications. The release requires macOS 26.5 or later and does not require Xcode.
+
+This is a free, ad-hoc signed direct release rather than an Apple-notarized Developer ID release. On first launch, macOS may ask you to approve it in **System Settings → Privacy & Security → Open Anyway**. The project never asks you to disable Gatekeeper or remove quarantine protection.
 
 For a Terminal-based installation or update, run:
 
@@ -33,7 +35,7 @@ For a Terminal-based installation or update, run:
 curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPrice-Widget/stable/script/install.sh | bash
 ```
 
-The installer downloads the latest notarized release, verifies its SHA-256 checksum, Developer ID signature, and Gatekeeper acceptance, installs it in `~/Applications`, registers the widget extension, and opens the app. It does not use `sudo`, bypass Gatekeeper, or ask for an API key. See [the install guide](docs/INSTALL.md) for options and source-building steps.
+The installer downloads the latest direct release, verifies its published SHA-256 checksum and embedded code-signature integrity, installs it in `~/Applications`, registers the widget extension, and opens the app. It does not use `sudo`, bypass Gatekeeper, or ask for an API key. See [the install guide](docs/INSTALL.md) for first-launch approval, options, and source-building steps.
 
 After installation, open the macOS widget gallery and search for **Finland Electricity Rates**.
 

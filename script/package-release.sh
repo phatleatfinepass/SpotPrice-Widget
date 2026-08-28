@@ -4,10 +4,9 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 output_dir="${SPOT_PRICE_OUTPUT_DIR:-$repo_root/dist}"
 version="${SPOT_PRICE_VERSION:-}"
+distribution="${SPOT_PRICE_DISTRIBUTION:-direct}"
 signing_identity="${SPOT_PRICE_SIGNING_IDENTITY:-}"
 signing_keychain="${SPOT_PRICE_SIGNING_KEYCHAIN:-}"
-skip_signing="${SPOT_PRICE_SKIP_SIGNING:-0}"
-skip_notarization="${SPOT_PRICE_SKIP_NOTARIZATION:-0}"
 notary_profile="${SPOT_PRICE_NOTARY_PROFILE:-}"
 
 fail() {
@@ -22,6 +21,11 @@ version="${version#v}"
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
   || fail "SPOT_PRICE_VERSION must use semantic versioning, for example 1.0.0"
 
+case "$distribution" in
+  direct|developer-id) ;;
+  *) fail "SPOT_PRICE_DISTRIBUTION must be direct or developer-id" ;;
+esac
+
 case "$output_dir" in
   ""|"/") fail "refusing unsafe output directory: '$output_dir'" ;;
 esac
@@ -31,17 +35,14 @@ for command_name in xcodebuild codesign ditto hdiutil shasum plutil; do
     || fail "required command is missing: $command_name"
 done
 
-if [[ "$skip_signing" != "1" && -z "$signing_identity" ]]; then
-  fail "set SPOT_PRICE_SIGNING_IDENTITY to a Developer ID Application identity"
-fi
-if [[ "$skip_signing" == "1" && "$skip_notarization" != "1" ]]; then
-  fail "unsigned QA packages must set SPOT_PRICE_SKIP_NOTARIZATION=1"
-fi
-
-if [[ "$skip_notarization" != "1" && -z "$notary_profile" ]]; then
-  for variable_name in SPOT_PRICE_NOTARY_APPLE_ID SPOT_PRICE_NOTARY_TEAM_ID SPOT_PRICE_NOTARY_APP_PASSWORD; do
-    [[ -n "${!variable_name:-}" ]] || fail "set $variable_name or SPOT_PRICE_NOTARY_PROFILE"
-  done
+if [[ "$distribution" == "developer-id" ]]; then
+  [[ -n "$signing_identity" ]] \
+    || fail "Developer ID mode requires SPOT_PRICE_SIGNING_IDENTITY"
+  if [[ -z "$notary_profile" ]]; then
+    for variable_name in SPOT_PRICE_NOTARY_APPLE_ID SPOT_PRICE_NOTARY_TEAM_ID SPOT_PRICE_NOTARY_APP_PASSWORD; do
+      [[ -n "${!variable_name:-}" ]] || fail "set $variable_name or SPOT_PRICE_NOTARY_PROFILE"
+    done
+  fi
 fi
 
 codesign_keychain_args=()
@@ -67,6 +68,7 @@ staged_app="$stage_dir/Finland Electricity Rates.app"
 built_app="$derived_data/Build/Products/Release/SpotPriceWidget.app"
 built_extension="$built_app/Contents/PlugIns/SpotPriceWidgetFinlandExtension.appex"
 staged_extension="$staged_app/Contents/PlugIns/SpotPriceWidgetFinlandExtension.appex"
+artifact_name="Finland-Electricity-Rates.dmg"
 
 printf 'Building Finland Electricity Rates %s for macOS…\n' "$version"
 xcodebuild -quiet \
@@ -92,15 +94,15 @@ mkdir -p "$stage_dir"
 ditto "$built_app" "$staged_app"
 ln -s /Applications "$stage_dir/Applications"
 
-if [[ "$skip_signing" == "1" ]]; then
-  printf 'Applying ad hoc signatures for local QA only…\n'
-  codesign --force --sign - \
+if [[ "$distribution" == "direct" ]]; then
+  ditto "$repo_root/docs/DIRECT-DISTRIBUTION.txt" "$stage_dir/READ ME — First Launch.txt"
+  printf 'Applying ad hoc signatures for free direct distribution…\n'
+  codesign --force --sign - --options runtime \
     --entitlements "$repo_root/SpotPriceWidgetFinland/SpotPriceWidgetFinland.entitlements" \
     "$staged_extension" >/dev/null
-  codesign --force --sign - \
+  codesign --force --sign - --options runtime \
     --entitlements "$repo_root/SpotPriceWidget/SpotPriceWidget.entitlements" \
     "$staged_app" >/dev/null
-  artifact_name="Finland-Electricity-Rates-QA-${version}.dmg"
 else
   printf 'Signing the widget extension and app with Developer ID…\n'
   codesign --force --sign "$signing_identity" "${codesign_keychain_args[@]}" --options runtime --timestamp \
@@ -109,7 +111,6 @@ else
   codesign --force --sign "$signing_identity" "${codesign_keychain_args[@]}" --options runtime --timestamp \
     --entitlements "$repo_root/SpotPriceWidget/SpotPriceWidget.entitlements" \
     "$staged_app" >/dev/null
-  artifact_name="Finland-Electricity-Rates.dmg"
 fi
 
 codesign --verify --deep --strict "$staged_app"
@@ -127,13 +128,18 @@ notary_submit() {
   fi
 }
 
-if [[ "$skip_notarization" != "1" ]]; then
+if [[ "$distribution" == "developer-id" ]]; then
   printf 'Notarizing the signed app…\n'
   app_zip="$work_dir/Finland-Electricity-Rates-${version}.zip"
   ditto -c -k --keepParent "$staged_app" "$app_zip"
   notary_submit "$app_zip"
   xcrun stapler staple "$staged_app"
   xcrun stapler validate "$staged_app"
+else
+  if spctl --assess --type execute "$staged_app" >/dev/null 2>&1; then
+    fail "direct package unexpectedly passed Developer ID assessment"
+  fi
+  printf 'Gatekeeper assessment: manual first-launch approval expected.\n'
 fi
 
 mkdir -p "$output_dir"
@@ -149,11 +155,10 @@ hdiutil create \
   -format UDZO \
   "$dmg_path" >/dev/null
 
-if [[ "$skip_signing" != "1" ]]; then
+if [[ "$distribution" == "direct" ]]; then
+  codesign --force --sign - "$dmg_path" >/dev/null
+else
   codesign --force --sign "$signing_identity" "${codesign_keychain_args[@]}" --timestamp "$dmg_path" >/dev/null
-fi
-
-if [[ "$skip_notarization" != "1" ]]; then
   printf 'Notarizing the disk image…\n'
   notary_submit "$dmg_path"
   xcrun stapler staple "$dmg_path"
@@ -162,10 +167,13 @@ if [[ "$skip_notarization" != "1" ]]; then
   spctl --assess --type execute --verbose=2 "$staged_app"
 fi
 
+codesign --verify "$dmg_path"
+
 (
   cd "$output_dir"
   shasum -a 256 "$artifact_name" > "$(basename "$checksum_path")"
 )
 
+printf 'Distribution mode: %s\n' "$distribution"
 printf 'Release artifact: %s\n' "$dmg_path"
 printf 'Checksum: %s\n' "$checksum_path"

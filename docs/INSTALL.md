@@ -5,17 +5,17 @@
 - macOS 26.5 or later
 - Internet access for the initial download and live widget data
 
-Xcode is not required for the signed product release.
+Xcode is not required for the packaged product release.
 
 ## Install from the disk image
 
 1. [Download the latest release](https://github.com/phatleatfinepass/SpotPrice-Widget/releases/latest/download/Finland-Electricity-Rates.dmg).
 2. Open `Finland-Electricity-Rates.dmg`.
 3. Drag **Finland Electricity Rates** into the Applications folder shown in the disk image.
-4. Open the app once.
-5. Open the macOS widget gallery and search for **Finland Electricity Rates**.
+4. Open the app once. If macOS blocks it, open **System Settings → Privacy & Security**, confirm the app name, and select **Open Anyway**.
+5. Confirm the second macOS prompt, then open the macOS widget gallery and search for **Finland Electricity Rates**.
 
-The disk image and embedded app are Developer ID-signed, Apple-notarized, and stapled for Gatekeeper verification.
+The disk image contains an ad-hoc signed Universal app for Intel and Apple silicon. It is not Apple-notarized and carries no paid Developer ID identity, so manual approval can be required on first launch. Only download releases from this repository and compare the published SHA-256 checksum when verifying one manually.
 
 ## Terminal install or update
 
@@ -23,7 +23,7 @@ The disk image and embedded app are Developer ID-signed, Apple-notarized, and st
 curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPrice-Widget/stable/script/install.sh | bash
 ```
 
-The installer downloads the latest GitHub Release, verifies the published SHA-256 checksum, validates the Developer ID signature and Gatekeeper acceptance, installs the app at `~/Applications/Finland Electricity Rates.app`, registers the widget extension, and opens the app.
+The installer downloads the latest GitHub Release, verifies the published SHA-256 checksum and app code-signature integrity, installs the app at `~/Applications/Finland Electricity Rates.app`, registers the widget extension, and opens the app. It explains the same manual approval path when Gatekeeper does not recognize the release.
 
 An existing product installation is moved to a timestamped backup before replacement. The older `SpotPriceWidget.app` development installation is also backed up during migration. The installer never uses `sudo` or changes Gatekeeper settings.
 
@@ -64,7 +64,7 @@ The source installer remains available for contributors and requires the full Xc
 curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPrice-Widget/stable/script/install-from-source.sh | bash
 ```
 
-Source builds are ad hoc-signed development artifacts and are not equivalent to the notarized product release.
+Source builds are local development artifacts. The packaged direct release adds a Universal build, fixed product naming, disk-image layout, integrity checks, and release documentation.
 
 ## Remove the app
 

@@ -1,52 +1,48 @@
 # Release Finland Electricity Rates
 
-This project distributes the macOS app outside the Mac App Store as a Developer ID-signed and Apple-notarized disk image. Do not publish an ad hoc-signed QA artifact as a release.
+The default product path is free direct distribution outside the Mac App Store. It creates an ad-hoc signed Universal disk image without a paid Apple Developer Program account. This preserves bundle integrity, but it does not establish a verified developer identity or satisfy Gatekeeper automatically on a newly downloaded copy.
+
+## Trust model
+
+- GitHub Releases is the authoritative download location.
+- The release includes a SHA-256 checksum for corruption and manual integrity checks.
+- The app and widget extension are ad-hoc signed and validated with `codesign --verify --deep --strict`.
+- Users may need **System Settings → Privacy & Security → Open Anyway** on first launch.
+- Release tooling must never disable Gatekeeper, strip quarantine metadata, or describe a direct artifact as Apple-notarized.
+
+The checksum and disk image live in the same GitHub release, so they do not protect against compromise of the repository or its release account. Developer ID signing and notarization are the upgrade path when verified publisher identity and automatic Gatekeeper acceptance become product requirements.
 
 ## Release prerequisites
 
-- Active Apple Developer Program membership for team `NWP7L2BJP5`
-- A **Developer ID Application** certificate exported as a password-protected PKCS#12 file
-- An Apple ID and app-specific password authorized to submit notarization requests for that team
 - A clean `maintenance` branch with passing macOS and iOS Simulator CI
+- A semantic version matching `MARKETING_VERSION`
+- Xcode with the macOS SDK needed by the project
+- No embedded Fingrid credential
 
-The signing certificate and notarization credentials belong in GitHub Actions secrets, never in source files or documentation:
-
-- `DEVELOPER_ID_APPLICATION_P12` — base64-encoded PKCS#12 archive
-- `DEVELOPER_ID_APPLICATION_PASSWORD`
-- `NOTARY_APPLE_ID`
-- `NOTARY_TEAM_ID`
-- `NOTARY_APP_PASSWORD`
+No signing certificate, Apple membership, notarization password, or release secret is required in direct mode.
 
 ## Validate locally
 
-Validate metadata and produce an explicitly labelled, ad hoc-signed QA disk image:
-
 ```bash
 script/validate-product.sh
-SPOT_PRICE_SKIP_SIGNING=1 \
-SPOT_PRICE_SKIP_NOTARIZATION=1 \
-script/package-release.sh
+SPOT_PRICE_DISTRIBUTION=direct script/package-release.sh
 ```
 
-The QA disk image is for structural testing only. Gatekeeper is expected to reject it on another Mac.
+The packaging script builds both `arm64` and `x86_64`, signs the widget extension and app ad hoc with the hardened-runtime option, verifies the resulting signatures, confirms that Developer ID assessment is rejected as expected, creates `dist/Finland-Electricity-Rates.dmg`, signs the disk image ad hoc, and writes its SHA-256 checksum.
 
-For a local production package, first store notarization credentials in Keychain with `notarytool`, then run:
-
-```bash
-SPOT_PRICE_SIGNING_IDENTITY="Developer ID Application: …" \
-SPOT_PRICE_NOTARY_PROFILE="SpotPriceWidget-Notary" \
-script/package-release.sh
-```
-
-The script signs the widget extension and host app, enables a secure timestamp and hardened runtime, notarizes and staples the app, builds and signs the disk image, notarizes and staples the disk image, validates Gatekeeper acceptance, and writes a SHA-256 checksum.
+Mount the disk image and verify the app, both architectures, product version, privacy manifests, absence of credentials, and the included first-launch notice before publishing.
 
 ## Publish
 
-1. Merge the release commit from `maintenance` into `stable`.
-2. Create an annotated semantic-version tag on the verified `stable` commit, such as `v1.0.0`.
+1. Fast-forward `stable` to the verified `maintenance` commit.
+2. Create an annotated semantic-version tag on that exact commit, such as `v1.0.0`.
 3. Push the tag.
 4. Confirm the **Release macOS** workflow succeeds.
-5. Download the published disk image from GitHub Releases on a clean Mac and verify install, launch, widget discovery, refresh, and replacement of an older installation.
-6. Confirm the public installer resolves the new release and passes checksum, signature, and Gatekeeper verification.
+5. Confirm the GitHub Release contains `Finland-Electricity-Rates.dmg` and `Finland-Electricity-Rates.dmg.sha256` and clearly describes the direct-distribution trust model.
+6. Run the public installer into a temporary destination and verify checksum, signature integrity, installation, widget registration, and first-launch guidance.
 
-The tag-triggered workflow publishes `Finland-Electricity-Rates.dmg` and its checksum only after signing and notarization succeed.
+## Optional Developer ID mode
+
+`SPOT_PRICE_DISTRIBUTION=developer-id` remains available for a future paid distribution path. It requires a Developer ID Application identity plus notarization credentials or a `notarytool` Keychain profile. See the variables checked by `script/package-release.sh` and store every credential outside the repository.
+
+Do not switch the public workflow to Developer ID mode until the exact Apple team, certificate, credentials, and release goal have been approved and verified.

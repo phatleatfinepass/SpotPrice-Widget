@@ -9,6 +9,10 @@
 
 Grid-emissions data requires access to Fingrid's registered API. If that optional source is unavailable, the renewable forecast remains independent and should continue to update.
 
+## macOS blocks the first launch
+
+The free direct release is ad-hoc signed and not Apple-notarized. Try opening **Finland Electricity Rates** once, then open **System Settings → Privacy & Security**, confirm that the blocked app is **Finland Electricity Rates**, and select **Open Anyway**. Do not disable Gatekeeper or remove quarantine protection.
+
 ## Report a bug
 
 Open a [GitHub issue](https://github.com/phatleatfinepass/SpotPrice-Widget/issues) with:

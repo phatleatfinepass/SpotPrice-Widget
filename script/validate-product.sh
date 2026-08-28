@@ -27,7 +27,9 @@ for required_path in \
   "$repo_root/PRIVACY.md" \
   "$repo_root/SUPPORT.md" \
   "$repo_root/CHANGELOG.md" \
-  "$repo_root/docs/RELEASE.md"; do
+  "$repo_root/docs/RELEASE.md" \
+  "$repo_root/docs/DIRECT-DISTRIBUTION.txt" \
+  "$repo_root/docs/RELEASE-NOTES.md"; do
   [[ -f "$required_path" ]] || fail "missing required product file: $required_path"
 done
 
@@ -41,6 +43,18 @@ if rg -n --hidden \
   '(FINGRID_API_KEY|x-api-key)[[:space:]]*[:=][[:space:]]*[A-Za-z0-9_-]{16,}' \
   "$repo_root" >/dev/null; then
   fail "a credential-shaped Fingrid value appears in the repository"
+fi
+
+rg -Fq 'distribution="${SPOT_PRICE_DISTRIBUTION:-direct}"' \
+  "$repo_root/script/package-release.sh" \
+  || fail "release packaging must default to direct distribution"
+rg -q 'SPOT_PRICE_DISTRIBUTION: direct' \
+  "$repo_root/.github/workflows/release.yml" \
+  || fail "the public release workflow must explicitly select direct distribution"
+
+if rg -n '(spctl[[:space:]]+--master-disable|xattr[[:space:]]+-[a-zA-Z]*d[^[:space:]]*[[:space:]]+com\.apple\.quarantine)' \
+  "$repo_root/script" "$repo_root/docs" "$repo_root/README.md" >/dev/null; then
+  fail "installation materials must not disable Gatekeeper or remove quarantine"
 fi
 
 printf 'Product metadata and release scripts are valid.\n'

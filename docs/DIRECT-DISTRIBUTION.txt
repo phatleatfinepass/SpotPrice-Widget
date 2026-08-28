@@ -1,0 +1,17 @@
+FINLAND ELECTRICITY RATES — FIRST LAUNCH
+
+This app is distributed directly by the SpotPriceWidget project. It is
+ad-hoc signed to protect the integrity of the host app and widget extension,
+but it is not registered with or notarized by Apple.
+
+INSTALL
+
+1. Drag “Finland Electricity Rates” to the Applications folder.
+2. Try to open the app.
+3. If macOS blocks it, open System Settings → Privacy & Security.
+4. In the Security section, choose Open Anyway, then confirm Open.
+
+Only approve an app you downloaded from the official project release page:
+https://github.com/phatleatfinepass/SpotPrice-Widget/releases
+
+The project never asks you to disable Gatekeeper or remove quarantine.

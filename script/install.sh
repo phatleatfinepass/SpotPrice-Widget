@@ -41,7 +41,7 @@ trap cleanup EXIT
 dmg_path="$work_dir/$dmg_name"
 checksum_path="$work_dir/$checksum_name"
 
-printf 'Downloading the latest notarized release…\n'
+printf 'Downloading the latest direct release…\n'
 curl -fL --retry 3 --retry-delay 2 "$release_base_url/$dmg_name" -o "$dmg_path"
 curl -fL --retry 3 --retry-delay 2 "$release_base_url/$checksum_name" -o "$checksum_path"
 
@@ -59,8 +59,10 @@ source_app="$mount_point/$app_bundle_name"
 
 codesign --verify --deep --strict "$source_app" \
   || fail "the downloaded app has an invalid code signature"
-spctl --assess --type execute --verbose=2 "$source_app" >/dev/null 2>&1 \
-  || fail "Gatekeeper did not accept the downloaded app"
+gatekeeper_accepted=0
+if spctl --assess --type execute --verbose=2 "$source_app" >/dev/null 2>&1; then
+  gatekeeper_accepted=1
+fi
 
 mkdir -p "$install_dir"
 target_app="$install_dir/$app_bundle_name"
@@ -94,8 +96,6 @@ fi
 
 codesign --verify --deep --strict "$target_app" \
   || fail "the installed app failed signature verification"
-spctl --assess --type execute --verbose=2 "$target_app" >/dev/null 2>&1 \
-  || fail "the installed app failed Gatekeeper verification"
 
 hdiutil detach "$mount_point" -quiet
 mounted=0
@@ -118,6 +118,13 @@ if [[ -n "$legacy_backup" ]]; then
   printf 'Legacy installation backed up at %s\n' "$legacy_backup"
 fi
 printf 'Widget bundle registered as %s\n' "$widget_bundle_id"
+
+if [[ "$gatekeeper_accepted" == "0" ]]; then
+  printf '\nThis free direct release is ad-hoc signed and is not Apple-notarized.\n'
+  printf 'On first launch, macOS may block it as an unidentified developer app.\n'
+  printf 'To approve this exact app: try opening it once, then open System Settings > Privacy & Security and select Open Anyway.\n'
+  printf 'The installer does not disable Gatekeeper or remove macOS quarantine protection.\n\n'
+fi
 
 if [[ "${SPOT_PRICE_SKIP_OPEN:-0}" != "1" ]]; then
   open "$target_app"

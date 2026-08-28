@@ -32,7 +32,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 
 Check small and medium widget previews in light and dark appearances when changing layout, typography, color bands, or charts.
 
-Release packaging and notarization are documented in [docs/RELEASE.md](docs/RELEASE.md). Never publish the ad hoc-signed QA disk image produced by the local validation mode.
+Release packaging is documented in [docs/RELEASE.md](docs/RELEASE.md). The approved public artifact is the ad-hoc signed Universal disk image produced in `direct` mode; do not describe it as Developer ID-signed or Apple-notarized.
 
 ## Credentials and private data
 
