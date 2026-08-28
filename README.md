@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/spot-price-widget-logo.png" width="152" alt="SpotPriceWidget green leaf and lightning logo">
+  <img src="docs/assets/logo-concepts/selected-confluence.png" width="152" alt="SpotPriceWidget Confluence logo">
 </p>
 
 # SpotPriceWidget
