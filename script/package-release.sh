@@ -65,7 +65,7 @@ trap cleanup EXIT
 derived_data="$work_dir/DerivedData"
 stage_dir="$work_dir/stage"
 staged_app="$stage_dir/Finland Electricity Rates.app"
-built_app="$derived_data/Build/Products/Release/SpotPriceWidget.app"
+built_app="$derived_data/Build/Products/Release/Finland Electricity Rates.app"
 built_extension="$built_app/Contents/PlugIns/SpotPriceWidgetFinlandExtension.appex"
 staged_extension="$staged_app/Contents/PlugIns/SpotPriceWidgetFinlandExtension.appex"
 artifact_name="Finland-Electricity-Rates.dmg"
@@ -85,6 +85,12 @@ xcodebuild -quiet \
 
 [[ -d "$built_app" && -d "$built_extension" ]] \
   || fail "build completed without the expected app and widget extension"
+[[ "$(plutil -extract CFBundleName raw "$built_app/Contents/Info.plist")" == "Finland Electricity Rates" ]] \
+  || fail "built app has the wrong bundle name"
+[[ "$(plutil -extract CFBundleDisplayName raw "$built_extension/Contents/Info.plist")" == "Finland Electricity Rates" ]] \
+  || fail "built widget extension has the wrong display name"
+[[ -f "$built_app/Contents/Resources/AppIcon.icns" ]] \
+  || fail "built app does not contain AppIcon.icns"
 
 embedded_fingrid_key="$(plutil -extract FingridAPIKey raw "$built_extension/Contents/Info.plist" 2>/dev/null || true)"
 [[ -z "$embedded_fingrid_key" || "$embedded_fingrid_key" == '$(FINGRID_API_KEY)' ]] \

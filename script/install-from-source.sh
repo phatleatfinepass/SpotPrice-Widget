@@ -5,7 +5,7 @@ repository="${SPOT_PRICE_REPOSITORY:-phatleatfinepass/SpotPrice-Widget}"
 ref="${SPOT_PRICE_REF:-stable}"
 install_dir="${SPOT_PRICE_INSTALL_DIR:-${HOME}/Applications}"
 source_override="${SPOT_PRICE_SOURCE_DIR:-}"
-app_name="SpotPriceWidget"
+app_name="Finland Electricity Rates"
 widget_bundle_id="personal.SpotPriceWidget.SpotPriceWidgetFinland"
 
 fail() {

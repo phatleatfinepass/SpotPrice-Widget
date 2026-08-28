@@ -19,7 +19,7 @@ case "$install_dir" in
   ""|"/") fail "refusing unsafe install directory: '$install_dir'" ;;
 esac
 
-for command_name in curl shasum hdiutil codesign ditto; do
+for command_name in curl shasum hdiutil codesign ditto plutil; do
   command -v "$command_name" >/dev/null 2>&1 \
     || fail "required command is missing: $command_name"
 done
@@ -56,6 +56,14 @@ mounted=1
 
 source_app="$mount_point/$app_bundle_name"
 [[ -d "$source_app" ]] || fail "release does not contain $app_bundle_name"
+source_extension="$source_app/Contents/PlugIns/SpotPriceWidgetFinlandExtension.appex"
+[[ -d "$source_extension" ]] || fail "release does not contain the Finland widget extension"
+[[ "$(plutil -extract CFBundleName raw "$source_app/Contents/Info.plist")" == "Finland Electricity Rates" ]] \
+  || fail "release app bundle name is incorrect"
+[[ "$(plutil -extract CFBundleDisplayName raw "$source_extension/Contents/Info.plist")" == "Finland Electricity Rates" ]] \
+  || fail "release widget display name is incorrect"
+[[ -f "$source_app/Contents/Resources/AppIcon.icns" ]] \
+  || fail "release does not contain the product icon"
 
 codesign --verify --deep --strict "$source_app" \
   || fail "the downloaded app has an invalid code signature"
@@ -70,13 +78,31 @@ legacy_app="$install_dir/$legacy_app_bundle_name"
 timestamp="$(date +%Y%m%d-%H%M%S)-$$"
 target_backup=""
 legacy_backup=""
+lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+
+pkill -x SpotPriceWidget >/dev/null 2>&1 || true
+pkill -x SpotPriceWidgetFinlandExtension >/dev/null 2>&1 || true
 
 if [[ -e "$target_app" ]]; then
+  old_extension="$target_app/Contents/PlugIns/SpotPriceWidgetFinlandExtension.appex"
+  if command -v pluginkit >/dev/null 2>&1 && [[ -d "$old_extension" ]]; then
+    pluginkit -r "$old_extension" >/dev/null 2>&1 || true
+  fi
+  if [[ -x "$lsregister" ]]; then
+    "$lsregister" -u "$target_app" >/dev/null 2>&1 || true
+  fi
   target_backup="$install_dir/${app_bundle_name}.backup-$timestamp"
   mv "$target_app" "$target_backup"
 fi
 
 if [[ -e "$legacy_app" && "$legacy_app" != "$target_app" ]]; then
+  legacy_extension="$legacy_app/Contents/PlugIns/SpotPriceWidgetFinlandExtension.appex"
+  if command -v pluginkit >/dev/null 2>&1 && [[ -d "$legacy_extension" ]]; then
+    pluginkit -r "$legacy_extension" >/dev/null 2>&1 || true
+  fi
+  if [[ -x "$lsregister" ]]; then
+    "$lsregister" -u "$legacy_app" >/dev/null 2>&1 || true
+  fi
   legacy_backup="$install_dir/${legacy_app_bundle_name}.backup-$timestamp"
   mv "$legacy_app" "$legacy_backup"
 fi
@@ -91,6 +117,17 @@ if ! ditto "$source_app" "$target_app"; then
   if [[ -n "$legacy_backup" && -e "$legacy_backup" ]]; then
     mv "$legacy_backup" "$legacy_app"
   fi
+  for restored_app in "$target_app" "$legacy_app"; do
+    if [[ -d "$restored_app" ]]; then
+      if [[ -x "$lsregister" ]]; then
+        "$lsregister" -f -R "$restored_app" >/dev/null 2>&1 || true
+      fi
+      restored_extension="$restored_app/Contents/PlugIns/SpotPriceWidgetFinlandExtension.appex"
+      if command -v pluginkit >/dev/null 2>&1 && [[ -d "$restored_extension" ]]; then
+        pluginkit -a "$restored_extension" >/dev/null 2>&1 || true
+      fi
+    fi
+  done
   fail "copy failed; the previous installation was restored"
 fi
 
@@ -100,14 +137,21 @@ codesign --verify --deep --strict "$target_app" \
 hdiutil detach "$mount_point" -quiet
 mounted=0
 
-lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 if [[ -x "$lsregister" ]]; then
   "$lsregister" -f -R "$target_app"
 fi
 
 installed_extension="$target_app/Contents/PlugIns/SpotPriceWidgetFinlandExtension.appex"
 if command -v pluginkit >/dev/null 2>&1 && [[ -d "$installed_extension" ]]; then
-  pluginkit -a "$installed_extension" || true
+  while IFS= read -r registered_extension; do
+    if [[ "$registered_extension" == /* && "$registered_extension" != "$installed_extension" ]]; then
+      pluginkit -r "$registered_extension" >/dev/null 2>&1 || true
+    fi
+  done < <(pluginkit -m -A -D -v -i "$widget_bundle_id" 2>/dev/null | awk -F '\t' 'NF >= 4 { print $NF }')
+  pluginkit -a "$installed_extension"
+  registered_extension="$(pluginkit -m -A -D -v -i "$widget_bundle_id" 2>/dev/null | awk -F '\t' 'NF >= 4 { print $NF; exit }')"
+  [[ "$registered_extension" == "$installed_extension" ]] \
+    || fail "WidgetKit registered an unexpected extension path: ${registered_extension:-none}"
 fi
 
 printf 'Installed Finland Electricity Rates at %s\n' "$target_app"

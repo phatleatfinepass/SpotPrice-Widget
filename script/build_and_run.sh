@@ -2,7 +2,9 @@
 set -euo pipefail
 
 MODE="${1:-run}"
-APP_NAME="SpotPriceWidget"
+SCHEME_NAME="SpotPriceWidget"
+APP_BUNDLE_NAME="Finland Electricity Rates"
+APP_PROCESS="SpotPriceWidget"
 BUNDLE_ID="personal.SpotPriceWidget"
 WIDGET_BUNDLE_ID="personal.SpotPriceWidget.SpotPriceWidgetFinland"
 WIDGET_PROCESS="SpotPriceWidgetFinlandExtension"
@@ -10,20 +12,20 @@ WIDGET_PROCESS="SpotPriceWidgetFinlandExtension"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT_PATH="$ROOT_DIR/SpotPriceWidget.xcodeproj"
 DERIVED_DATA_DIR="$ROOT_DIR/DerivedData"
-APP_BUNDLE="$DERIVED_DATA_DIR/Build/Products/Debug/$APP_NAME.app"
-APP_BINARY="$APP_BUNDLE/Contents/MacOS/$APP_NAME"
+APP_BUNDLE="$DERIVED_DATA_DIR/Build/Products/Debug/$APP_BUNDLE_NAME.app"
+APP_BINARY="$APP_BUNDLE/Contents/MacOS/$APP_PROCESS"
 WIDGET_EXTENSION="$APP_BUNDLE/Contents/PlugIns/SpotPriceWidgetFinlandExtension.appex"
 LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 
-pkill -x "$APP_NAME" >/dev/null 2>&1 || true
+pkill -x "$APP_PROCESS" >/dev/null 2>&1 || true
 pkill -x "$WIDGET_PROCESS" >/dev/null 2>&1 || true
 
 xcodebuild \
   -quiet \
   -project "$PROJECT_PATH" \
-  -scheme "$APP_NAME" \
+  -scheme "$SCHEME_NAME" \
   -configuration Debug \
   -destination "platform=macOS" \
   -derivedDataPath "$DERIVED_DATA_DIR" \
@@ -53,7 +55,7 @@ case "$MODE" in
     ;;
   --logs|logs)
     open_app
-    /usr/bin/log stream --info --style compact --predicate "process == \"$APP_NAME\""
+    /usr/bin/log stream --info --style compact --predicate "process == \"$APP_PROCESS\""
     ;;
   --telemetry|telemetry)
     open_app
@@ -62,8 +64,8 @@ case "$MODE" in
   --verify|verify)
     open_app
     sleep 2
-    pgrep -x "$APP_NAME" >/dev/null
-    printf 'Verified %s build ' "$APP_NAME"
+    pgrep -x "$APP_PROCESS" >/dev/null
+    printf 'Verified %s build ' "$APP_BUNDLE_NAME"
     /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_BUNDLE/Contents/Info.plist"
     ;;
   *)

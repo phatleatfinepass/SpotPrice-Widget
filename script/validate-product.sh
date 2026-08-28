@@ -27,6 +27,11 @@ version_count="$(printf '%s\n' "$versions" | awk 'NF { count += 1 } END { print 
 [[ "$versions" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
   || fail "marketing version must use semantic versioning"
 
+product_name_count="$(grep -Fc 'PRODUCT_NAME = "Finland Electricity Rates";' "$project_file" || true)"
+executable_name_count="$(grep -Fc 'EXECUTABLE_NAME = SpotPriceWidget;' "$project_file" || true)"
+[[ "$product_name_count" == "2" && "$executable_name_count" == "2" ]] \
+  || fail "the host app must use the product-facing bundle name and stable executable name"
+
 for required_path in \
   "$repo_root/Shared/PrivacyInfo.xcprivacy" \
   "$repo_root/PRIVACY.md" \

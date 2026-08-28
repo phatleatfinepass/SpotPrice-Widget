@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 1.0.1 - 2026-08-28
+
+### Fixed
+
+- Widget gallery provider name now uses **Finland Electricity Rates** instead of the internal Xcode target name.
+- Product icon and bundle-name metadata are validated before packaging or installation.
+- Installer removes stale widget registrations before registering the installed extension.
+
+## 1.0.0 - 2026-08-28
+
 ### Added
 
 - Free direct-distribution workflow with ad-hoc app signatures
