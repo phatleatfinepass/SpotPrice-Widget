@@ -9,7 +9,7 @@
 ## One-command install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPriceWidget/stable/script/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPrice-Widget/stable/script/install.sh | bash
 ```
 
 The script downloads the `stable` branch into a temporary directory, builds the macOS app locally, applies an ad hoc signature, verifies that signature, installs the app at `~/Applications/SpotPriceWidget.app`, registers the widget extension, and opens the app.
@@ -21,7 +21,7 @@ An existing installation is moved to a timestamped backup in the same directory 
 Set an option only for the installer process:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPriceWidget/stable/script/install.sh \
+curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPrice-Widget/stable/script/install.sh \
   | SPOT_PRICE_INSTALL_DIR=/path/to/apps SPOT_PRICE_SKIP_OPEN=1 bash
 ```
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repository="${SPOT_PRICE_REPOSITORY:-phatleatfinepass/SpotPriceWidget}"
+repository="${SPOT_PRICE_REPOSITORY:-phatleatfinepass/SpotPrice-Widget}"
 ref="${SPOT_PRICE_REF:-stable}"
 install_dir="${SPOT_PRICE_INSTALL_DIR:-${HOME}/Applications}"
 source_override="${SPOT_PRICE_SOURCE_DIR:-}"

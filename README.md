@@ -27,7 +27,7 @@ Glanceable Finland electricity prices, grid conditions, and Helsinki airspace fo
 You need macOS 26.5 or later and the full Xcode app. Then run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPriceWidget/stable/script/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPrice-Widget/stable/script/install.sh | bash
 ```
 
 The installer builds the reviewed `stable` branch locally, signs the result ad hoc, installs it in `~/Applications`, registers the widget extension, and opens the app. It does not use `sudo`, bypass Gatekeeper, or ask for an API key. See [the install guide](docs/INSTALL.md) for options and manual steps.
@@ -55,8 +55,8 @@ Contributions should target `maintenance`. See [CONTRIBUTING.md](CONTRIBUTING.md
 ## Build from source
 
 ```bash
-git clone --branch maintenance https://github.com/phatleatfinepass/SpotPriceWidget.git
-cd SpotPriceWidget
+git clone --branch maintenance https://github.com/phatleatfinepass/SpotPrice-Widget.git
+cd SpotPrice-Widget
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   xcodebuild -project SpotPriceWidget.xcodeproj \
   -scheme SpotPriceWidget \
