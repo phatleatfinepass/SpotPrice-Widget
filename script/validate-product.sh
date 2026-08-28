@@ -61,6 +61,13 @@ grep -Eq 'SPOT_PRICE_DISTRIBUTION: direct' \
   "$repo_root/.github/workflows/release.yml" \
   || fail "the public release workflow must explicitly select direct distribution"
 
+for installer_path in \
+  "$repo_root/script/install.sh" \
+  "$repo_root/script/install-from-source.sh"; do
+  grep -Fq 'unregister_competing_apps "$target_app"' "$installer_path" \
+    || fail "installers must remove competing Launch Services registrations"
+done
+
 if git -C "$repo_root" grep -En \
   '(spctl[[:space:]]+--master-disable|xattr[[:space:]]+-[a-zA-Z]*d[^[:space:]]*[[:space:]]+com\.apple\.quarantine)' \
   -- script docs README.md >/dev/null; then

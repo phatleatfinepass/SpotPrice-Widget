@@ -6,18 +6,59 @@ ref="${SPOT_PRICE_REF:-stable}"
 install_dir="${SPOT_PRICE_INSTALL_DIR:-${HOME}/Applications}"
 source_override="${SPOT_PRICE_SOURCE_DIR:-}"
 app_name="Finland Electricity Rates"
+app_bundle_id="personal.SpotPriceWidget"
 widget_bundle_id="personal.SpotPriceWidget.SpotPriceWidgetFinland"
+lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 
 fail() {
   printf 'SpotPriceWidget source installer: %s\n' "$1" >&2
   exit 1
 }
 
+registered_app_paths() {
+  [[ -x "$lsregister" ]] || return 0
+
+  "$lsregister" -dump 2>/dev/null | awk -v bundle_id="$app_bundle_id" '
+    BEGIN { RS = "--------------------------------------------------------------------------------" }
+    {
+      registered_identifier = ""
+      registered_path = ""
+      line_count = split($0, lines, "\n")
+      for (line_number = 1; line_number <= line_count; line_number += 1) {
+        line = lines[line_number]
+        if (line ~ /^[[:space:]]*identifier:[[:space:]]*/) {
+          registered_identifier = line
+          sub(/^[[:space:]]*identifier:[[:space:]]*/, "", registered_identifier)
+          sub(/[[:space:]]+$/, "", registered_identifier)
+        } else if (line ~ /^[[:space:]]*path:[[:space:]]*/) {
+          registered_path = line
+          sub(/^[[:space:]]*path:[[:space:]]*/, "", registered_path)
+          sub(/[[:space:]]+\(0x[[:xdigit:]]+\)[[:space:]]*$/, "", registered_path)
+        }
+      }
+      if (registered_identifier == bundle_id && registered_path ~ /^\//) {
+        print registered_path
+      }
+    }
+  '
+}
+
+unregister_competing_apps() {
+  local canonical_app="$1"
+  local registered_app
+
+  while IFS= read -r registered_app; do
+    if [[ -n "$registered_app" && "$registered_app" != "$canonical_app" ]]; then
+      "$lsregister" -u "$registered_app" >/dev/null 2>&1 || true
+    fi
+  done < <(registered_app_paths)
+}
+
 case "$install_dir" in
   ""|"/") fail "refusing unsafe install directory: '$install_dir'" ;;
 esac
 
-for command_name in curl tar xcodebuild codesign ditto; do
+for command_name in awk curl tar xcodebuild codesign ditto; do
   command -v "$command_name" >/dev/null 2>&1 \
     || fail "required command is missing: $command_name"
 done
@@ -97,7 +138,8 @@ fi
 
 codesign --verify --deep --strict "$target_app"
 
-lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+unregister_competing_apps "$target_app"
+
 if [[ -x "$lsregister" ]]; then
   "$lsregister" -f -R "$target_app"
 fi
@@ -106,6 +148,9 @@ installed_extension="$target_app/Contents/PlugIns/SpotPriceWidgetFinlandExtensio
 if command -v pluginkit >/dev/null 2>&1; then
   pluginkit -a "$installed_extension" || true
 fi
+
+pkill -x NotificationCenter >/dev/null 2>&1 || true
+pkill -x chronod >/dev/null 2>&1 || true
 
 printf 'Installed development build at %s\n' "$target_app"
 if [[ -n "$backup_app" ]]; then

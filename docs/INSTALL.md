@@ -23,7 +23,7 @@ The disk image contains an ad-hoc signed Universal app for Intel and Apple silic
 curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPrice-Widget/stable/script/install.sh | bash
 ```
 
-The installer downloads the latest GitHub Release, verifies the published SHA-256 checksum and app code-signature integrity, installs the app at `~/Applications/Finland Electricity Rates.app`, registers the widget extension, and opens the app. It explains the same manual approval path when Gatekeeper does not recognize the release.
+The installer downloads the latest GitHub Release, verifies the published SHA-256 checksum and app code-signature integrity, installs the app at `~/Applications/Finland Electricity Rates.app`, registers the widget extension, and opens the app. It removes stale Launch Services records for older copies of this app so the widget gallery resolves the installed name and logo; it does not delete those older app bundles. It explains the same manual approval path when Gatekeeper does not recognize the release.
 
 An existing product installation is moved to a timestamped backup before replacement. The older `SpotPriceWidget.app` development installation is also backed up during migration. The installer never uses `sudo` or changes Gatekeeper settings.
 

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Installer now unregisters stale parent-app records before refreshing WidgetKit, preventing the widget gallery from falling back to the generic macOS application icon.
+
 ## 1.0.1 - 2026-08-28
 
 ### Fixed

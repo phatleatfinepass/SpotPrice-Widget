@@ -8,6 +8,7 @@ app_bundle_name="Finland Electricity Rates.app"
 legacy_app_bundle_name="SpotPriceWidget.app"
 dmg_name="Finland-Electricity-Rates.dmg"
 checksum_name="${dmg_name}.sha256"
+app_bundle_id="personal.SpotPriceWidget"
 widget_bundle_id="personal.SpotPriceWidget.SpotPriceWidgetFinland"
 
 fail() {
@@ -19,7 +20,7 @@ case "$install_dir" in
   ""|"/") fail "refusing unsafe install directory: '$install_dir'" ;;
 esac
 
-for command_name in curl shasum hdiutil codesign ditto plutil; do
+for command_name in awk curl shasum hdiutil codesign ditto plutil; do
   command -v "$command_name" >/dev/null 2>&1 \
     || fail "required command is missing: $command_name"
 done
@@ -80,6 +81,45 @@ target_backup=""
 legacy_backup=""
 lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 
+registered_app_paths() {
+  [[ -x "$lsregister" ]] || return 0
+
+  "$lsregister" -dump 2>/dev/null | awk -v bundle_id="$app_bundle_id" '
+    BEGIN { RS = "--------------------------------------------------------------------------------" }
+    {
+      registered_identifier = ""
+      registered_path = ""
+      line_count = split($0, lines, "\n")
+      for (line_number = 1; line_number <= line_count; line_number += 1) {
+        line = lines[line_number]
+        if (line ~ /^[[:space:]]*identifier:[[:space:]]*/) {
+          registered_identifier = line
+          sub(/^[[:space:]]*identifier:[[:space:]]*/, "", registered_identifier)
+          sub(/[[:space:]]+$/, "", registered_identifier)
+        } else if (line ~ /^[[:space:]]*path:[[:space:]]*/) {
+          registered_path = line
+          sub(/^[[:space:]]*path:[[:space:]]*/, "", registered_path)
+          sub(/[[:space:]]+\(0x[[:xdigit:]]+\)[[:space:]]*$/, "", registered_path)
+        }
+      }
+      if (registered_identifier == bundle_id && registered_path ~ /^\//) {
+        print registered_path
+      }
+    }
+  '
+}
+
+unregister_competing_apps() {
+  local canonical_app="$1"
+  local registered_app
+
+  while IFS= read -r registered_app; do
+    if [[ -n "$registered_app" && "$registered_app" != "$canonical_app" ]]; then
+      "$lsregister" -u "$registered_app" >/dev/null 2>&1 || true
+    fi
+  done < <(registered_app_paths)
+}
+
 pkill -x SpotPriceWidget >/dev/null 2>&1 || true
 pkill -x SpotPriceWidgetFinlandExtension >/dev/null 2>&1 || true
 
@@ -134,6 +174,8 @@ fi
 codesign --verify --deep --strict "$target_app" \
   || fail "the installed app failed signature verification"
 
+unregister_competing_apps "$target_app"
+
 hdiutil detach "$mount_point" -quiet
 mounted=0
 
@@ -153,6 +195,9 @@ if command -v pluginkit >/dev/null 2>&1 && [[ -d "$installed_extension" ]]; then
   [[ "$registered_extension" == "$installed_extension" ]] \
     || fail "WidgetKit registered an unexpected extension path: ${registered_extension:-none}"
 fi
+
+pkill -x NotificationCenter >/dev/null 2>&1 || true
+pkill -x chronod >/dev/null 2>&1 || true
 
 printf 'Installed Finland Electricity Rates at %s\n' "$target_app"
 if [[ -n "$target_backup" ]]; then
