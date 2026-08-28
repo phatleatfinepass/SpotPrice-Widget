@@ -18,6 +18,7 @@ The checksum and disk image live in the same GitHub release, so they do not prot
 - A semantic version matching `MARKETING_VERSION`
 - Xcode with the macOS SDK needed by the project
 - No embedded Fingrid credential
+- Release validation that depends only on commands present in the macOS runner; any added tool must be installed explicitly in CI
 
 No signing certificate, Apple membership, notarization password, or release secret is required in direct mode.
 

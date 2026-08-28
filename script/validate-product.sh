@@ -9,6 +9,11 @@ fail() {
   exit 1
 }
 
+for command_name in awk bash git grep plutil sort; do
+  command -v "$command_name" >/dev/null 2>&1 \
+    || fail "required validation command is missing: $command_name"
+done
+
 for script_path in \
   "$repo_root/script/install.sh" \
   "$repo_root/script/install-from-source.sh" \
@@ -37,23 +42,23 @@ plutil -lint "$repo_root/Shared/PrivacyInfo.xcprivacy" >/dev/null
 plutil -lint "$repo_root/SpotPriceWidget/SpotPriceWidget.entitlements" >/dev/null
 plutil -lint "$repo_root/SpotPriceWidgetFinland/SpotPriceWidgetFinland.entitlements" >/dev/null
 
-if rg -n --hidden \
-  -g '!*.png' \
-  -g '!SpotPriceWidget.xcodeproj/project.pbxproj' \
+if git -C "$repo_root" grep -En \
   '(FINGRID_API_KEY|x-api-key)[[:space:]]*[:=][[:space:]]*[A-Za-z0-9_-]{16,}' \
-  "$repo_root" >/dev/null; then
+  -- . ':(exclude)*.png' ':(exclude)SpotPriceWidget.xcodeproj/project.pbxproj' \
+  >/dev/null; then
   fail "a credential-shaped Fingrid value appears in the repository"
 fi
 
-rg -Fq 'distribution="${SPOT_PRICE_DISTRIBUTION:-direct}"' \
+grep -Fq 'distribution="${SPOT_PRICE_DISTRIBUTION:-direct}"' \
   "$repo_root/script/package-release.sh" \
   || fail "release packaging must default to direct distribution"
-rg -q 'SPOT_PRICE_DISTRIBUTION: direct' \
+grep -Eq 'SPOT_PRICE_DISTRIBUTION: direct' \
   "$repo_root/.github/workflows/release.yml" \
   || fail "the public release workflow must explicitly select direct distribution"
 
-if rg -n '(spctl[[:space:]]+--master-disable|xattr[[:space:]]+-[a-zA-Z]*d[^[:space:]]*[[:space:]]+com\.apple\.quarantine)' \
-  "$repo_root/script" "$repo_root/docs" "$repo_root/README.md" >/dev/null; then
+if git -C "$repo_root" grep -En \
+  '(spctl[[:space:]]+--master-disable|xattr[[:space:]]+-[a-zA-Z]*d[^[:space:]]*[[:space:]]+com\.apple\.quarantine)' \
+  -- script docs README.md >/dev/null; then
   fail "installation materials must not disable Gatekeeper or remove quarantine"
 fi
 
