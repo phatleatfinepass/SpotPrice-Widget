@@ -4,7 +4,7 @@
 
 # SpotPriceWidget
 
-Glanceable Finland electricity prices, grid conditions, and Helsinki airspace for macOS and iOS. The widgets use a compact, Home-inspired visual language designed to answer “what is happening now?” without opening an app.
+Glanceable Finland electricity prices and grid conditions for macOS and iOS. The widgets use a compact, Home-inspired visual language designed to answer “what is happening now?” without opening an app.
 
 <p align="center">
   <img src="docs/assets/electricity-rates-medium.png" width="710" alt="Finland Electricity Rates medium widget">
@@ -14,12 +14,9 @@ Glanceable Finland electricity prices, grid conditions, and Helsinki airspace fo
 
 - **Finland Electricity Rates** — current VAT-inclusive spot price, price band, range gauge, and the day’s hourly prices. Negative prices are supported.
 - **Finland Grid Conditions** — current grid-emissions intensity paired with a forward-looking renewable-energy signal.
-- **HEL Airspace Radar** — a compact snapshot of airborne traffic around Helsinki Airport.
 
 <p align="center">
   <img src="docs/assets/grid-conditions-medium.png" width="710" alt="Finland Grid Conditions medium widget">
-  <br>
-  <img src="docs/assets/helsinki-air-radar-medium.png" width="710" alt="HEL Airspace Radar medium widget">
 </p>
 
 ## Quick install on macOS
@@ -41,9 +38,8 @@ The app contacts these data providers directly; it has no project-owned server o
 - Electricity prices: [spot-hinta.fi](https://spot-hinta.fi/)
 - Renewable forecast signal: [Energy-Charts](https://api.energy-charts.info/)
 - Grid emissions: [Fingrid Open Data](https://data.fingrid.fi/en/)
-- Air traffic: [OpenSky Network](https://opensky-network.org/)
 
-Spot prices, the renewable signal, and public OpenSky snapshots are keyless. Fingrid’s emissions endpoint requires a Fingrid API key and therefore shows as unavailable in the public build unless a developer supplies a key locally. No credential is stored in this repository or by the installer.
+Spot prices and the renewable signal are keyless. Fingrid’s emissions endpoint requires a Fingrid API key and therefore shows as unavailable in the public build unless a developer supplies a key locally. No credential is stored in this repository or by the installer.
 
 ## Branches
 

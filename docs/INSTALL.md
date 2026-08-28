@@ -37,7 +37,7 @@ Available variables:
 1. Open **Finland Electricity Rates** once after installation.
 2. Open the macOS widget gallery.
 3. Search for **Finland Electricity Rates**.
-4. Choose the Electricity Rates, Grid Conditions, or HEL Airspace Radar widget and select a supported size.
+4. Choose the Electricity Rates or Grid Conditions widget and select a supported size.
 
 If the gallery had already been open, close and reopen it after the app launches.
 

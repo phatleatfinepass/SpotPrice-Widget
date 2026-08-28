@@ -6,6 +6,5 @@ struct SpotPriceWidgetFinlandBundle: WidgetBundle {
     var body: some Widget {
         SpotPriceWidgetFinland()
         FinlandGridForecastWidget()
-        HelsinkiAirRadarWidget()
     }
 }
