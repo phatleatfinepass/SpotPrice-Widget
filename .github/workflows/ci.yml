@@ -1,0 +1,51 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - stable
+      - maintenance
+  pull_request:
+    branches:
+      - stable
+      - maintenance
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            destination: platform=macOS
+          - name: iOS Simulator
+            destination: generic/platform=iOS Simulator
+    env:
+      DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: xcodebuild -version
+
+      - name: Build
+        run: |
+          xcodebuild -quiet \
+            -project SpotPriceWidget.xcodeproj \
+            -scheme SpotPriceWidget \
+            -configuration Debug \
+            -destination '${{ matrix.destination }}' \
+            -derivedDataPath '${{ runner.temp }}/DerivedData-${{ matrix.name }}' \
+            CODE_SIGNING_ALLOWED=NO \
+            build

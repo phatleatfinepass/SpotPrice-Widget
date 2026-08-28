@@ -6,14 +6,70 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		CBE02E9C303E1D5000926383 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CBE02E9B303E1D5000926383 /* WidgetKit.framework */; };
+		CBE02E9E303E1D5000926383 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CBE02E9D303E1D5000926383 /* SwiftUI.framework */; };
+		CBE02EAD303E1D5100926383 /* SpotPriceWidgetFinlandExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CBE02E99303E1D5000926383 /* SpotPriceWidgetFinlandExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		CBE02EAB303E1D5100926383 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CBE02E7F303E1CFF00926383 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CBE02E98303E1D5000926383;
+			remoteInfo = SpotPriceWidgetFinlandExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		CBE02EB2303E1D5100926383 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				CBE02EAD303E1D5100926383 /* SpotPriceWidgetFinlandExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		CBE02E87303E1D0000926383 /* SpotPriceWidget.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SpotPriceWidget.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CBE02E99303E1D5000926383 /* SpotPriceWidgetFinlandExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SpotPriceWidgetFinlandExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		CBE02E9B303E1D5000926383 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		CBE02E9D303E1D5000926383 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		CBE02EAE303E1D5100926383 /* Exceptions for "SpotPriceWidgetFinland" folder in "SpotPriceWidgetFinlandExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = CBE02E98303E1D5000926383 /* SpotPriceWidgetFinlandExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		CBE02E89303E1D0000926383 /* SpotPriceWidget */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = SpotPriceWidget;
+			sourceTree = "<group>";
+		};
+		CBE02E9F303E1D5000926383 /* SpotPriceWidgetFinland */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				CBE02EAE303E1D5100926383 /* Exceptions for "SpotPriceWidgetFinland" folder in "SpotPriceWidgetFinlandExtension" target */,
+			);
+			path = SpotPriceWidgetFinland;
+			sourceTree = "<group>";
+		};
+		CBE02EC0303E300000926383 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -26,6 +82,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CBE02E96303E1D5000926383 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CBE02E9E303E1D5000926383 /* SwiftUI.framework in Frameworks */,
+				CBE02E9C303E1D5000926383 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -33,6 +98,9 @@
 			isa = PBXGroup;
 			children = (
 				CBE02E89303E1D0000926383 /* SpotPriceWidget */,
+				CBE02EC0303E300000926383 /* Shared */,
+				CBE02E9F303E1D5000926383 /* SpotPriceWidgetFinland */,
+				CBE02E9A303E1D5000926383 /* Frameworks */,
 				CBE02E88303E1D0000926383 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,8 +109,18 @@
 			isa = PBXGroup;
 			children = (
 				CBE02E87303E1D0000926383 /* SpotPriceWidget.app */,
+				CBE02E99303E1D5000926383 /* SpotPriceWidgetFinlandExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		CBE02E9A303E1D5000926383 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				CBE02E9B303E1D5000926383 /* WidgetKit.framework */,
+				CBE02E9D303E1D5000926383 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -55,13 +133,16 @@
 				CBE02E83303E1D0000926383 /* Sources */,
 				CBE02E84303E1D0000926383 /* Frameworks */,
 				CBE02E85303E1D0000926383 /* Resources */,
+				CBE02EB2303E1D5100926383 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				CBE02EAC303E1D5100926383 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				CBE02E89303E1D0000926383 /* SpotPriceWidget */,
+				CBE02EC0303E300000926383 /* Shared */,
 			);
 			name = SpotPriceWidget;
 			packageProductDependencies = (
@@ -69,6 +150,29 @@
 			productName = SpotPriceWidget;
 			productReference = CBE02E87303E1D0000926383 /* SpotPriceWidget.app */;
 			productType = "com.apple.product-type.application";
+		};
+		CBE02E98303E1D5000926383 /* SpotPriceWidgetFinlandExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CBE02EAF303E1D5100926383 /* Build configuration list for PBXNativeTarget "SpotPriceWidgetFinlandExtension" */;
+			buildPhases = (
+				CBE02E95303E1D5000926383 /* Sources */,
+				CBE02E96303E1D5000926383 /* Frameworks */,
+				CBE02E97303E1D5000926383 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				CBE02E9F303E1D5000926383 /* SpotPriceWidgetFinland */,
+				CBE02EC0303E300000926383 /* Shared */,
+			);
+			name = SpotPriceWidgetFinlandExtension;
+			packageProductDependencies = (
+			);
+			productName = SpotPriceWidgetFinlandExtension;
+			productReference = CBE02E99303E1D5000926383 /* SpotPriceWidgetFinlandExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -81,6 +185,9 @@
 				LastUpgradeCheck = 2660;
 				TargetAttributes = {
 					CBE02E86303E1D0000926383 = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					CBE02E98303E1D5000926383 = {
 						CreatedOnToolsVersion = 26.6;
 					};
 				};
@@ -100,12 +207,20 @@
 			projectRoot = "";
 			targets = (
 				CBE02E86303E1D0000926383 /* SpotPriceWidget */,
+				CBE02E98303E1D5000926383 /* SpotPriceWidgetFinlandExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		CBE02E85303E1D0000926383 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CBE02E97303E1D5000926383 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +237,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CBE02E95303E1D5000926383 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		CBE02EAC303E1D5100926383 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CBE02E98303E1D5000926383 /* SpotPriceWidgetFinlandExtension */;
+			targetProxy = CBE02EAB303E1D5100926383 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		CBE02E90303E1D0100926383 /* Debug */ = {
@@ -183,7 +313,7 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = macosx;
+				SDKROOT = auto;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -240,7 +370,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				SDKROOT = macosx;
+				SDKROOT = auto;
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
 			name = Release;
@@ -250,16 +380,25 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = SpotPriceWidget/SpotPriceWidget.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
+				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 15;
 				DEVELOPMENT_TEAM = NWP7L2BJP5;
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Finland Electricity Rates";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -269,11 +408,14 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -282,16 +424,22 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = SpotPriceWidget/SpotPriceWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 15;
 				DEVELOPMENT_TEAM = NWP7L2BJP5;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Finland Electricity Rates";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -301,11 +449,91 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		CBE02EB0303E1D5100926383 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = SpotPriceWidgetFinland/SpotPriceWidgetFinland.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
+				CURRENT_PROJECT_VERSION = 15;
+				DEVELOPMENT_TEAM = NWP7L2BJP5;
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SpotPriceWidgetFinland/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Finland Electricity Rates";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = personal.SpotPriceWidget.SpotPriceWidgetFinland;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		CBE02EB1303E1D5100926383 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = SpotPriceWidgetFinland/SpotPriceWidgetFinland.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 15;
+				DEVELOPMENT_TEAM = NWP7L2BJP5;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SpotPriceWidgetFinland/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Finland Electricity Rates";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = personal.SpotPriceWidget.SpotPriceWidgetFinland;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -326,6 +554,15 @@
 			buildConfigurations = (
 				CBE02E93303E1D0100926383 /* Debug */,
 				CBE02E94303E1D0100926383 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CBE02EAF303E1D5100926383 /* Build configuration list for PBXNativeTarget "SpotPriceWidgetFinlandExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CBE02EB0303E1D5100926383 /* Debug */,
+				CBE02EB1303E1D5100926383 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

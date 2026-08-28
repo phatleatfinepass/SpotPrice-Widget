@@ -1,0 +1,15 @@
+.DS_Store
+DerivedData/
+DerivedData-iOS/
+.derivedData*/
+.playwright-cli/
+
+# Xcode user state stays local; shared schemes remain versioned.
+*.xcuserstate
+xcuserdata/
+**/xcuserdata/
+
+# Never commit local credentials or machine-specific build settings.
+.env
+.env.*
+*.xcconfig.local
