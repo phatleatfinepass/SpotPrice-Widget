@@ -1,22 +1,33 @@
-# Install SpotPriceWidget
+# Install Finland Electricity Rates
 
 ## Requirements
 
 - macOS 26.5 or later
-- The full Xcode app, with the license accepted and command-line components available
-- Internet access while downloading the source and widget data
+- Internet access for the initial download and live widget data
 
-## One-command install
+Xcode is not required for the signed product release.
+
+## Install from the disk image
+
+1. [Download the latest release](https://github.com/phatleatfinepass/SpotPrice-Widget/releases/latest/download/Finland-Electricity-Rates.dmg).
+2. Open `Finland-Electricity-Rates.dmg`.
+3. Drag **Finland Electricity Rates** into the Applications folder shown in the disk image.
+4. Open the app once.
+5. Open the macOS widget gallery and search for **Finland Electricity Rates**.
+
+The disk image and embedded app are Developer ID-signed, Apple-notarized, and stapled for Gatekeeper verification.
+
+## Terminal install or update
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPrice-Widget/stable/script/install.sh | bash
 ```
 
-The script downloads the `stable` branch into a temporary directory, builds the macOS app locally, applies an ad hoc signature, verifies that signature, installs the app at `~/Applications/SpotPriceWidget.app`, registers the widget extension, and opens the app.
+The installer downloads the latest GitHub Release, verifies the published SHA-256 checksum, validates the Developer ID signature and Gatekeeper acceptance, installs the app at `~/Applications/Finland Electricity Rates.app`, registers the widget extension, and opens the app.
 
-An existing installation is moved to a timestamped backup in the same directory before replacement. The installer never uses `sudo`, changes Gatekeeper settings, or persists credentials.
+An existing product installation is moved to a timestamped backup before replacement. The older `SpotPriceWidget.app` development installation is also backed up during migration. The installer never uses `sudo` or changes Gatekeeper settings.
 
-## Installer options
+### Installer options
 
 Set an option only for the installer process:
 
@@ -25,28 +36,36 @@ curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPrice-Widget/s
   | SPOT_PRICE_INSTALL_DIR=/path/to/apps SPOT_PRICE_SKIP_OPEN=1 bash
 ```
 
-Available variables:
-
 - `SPOT_PRICE_INSTALL_DIR` — destination directory; defaults to `~/Applications`.
 - `SPOT_PRICE_SKIP_OPEN=1` — install and register without opening the app.
-- `SPOT_PRICE_REF` — repository branch or tag; defaults to `stable`.
 - `SPOT_PRICE_REPOSITORY` — GitHub `owner/repository`; intended for testing forks.
+- `SPOT_PRICE_RELEASE_BASE_URL` — exact release-asset base URL; intended for release validation.
 
 ## Add the widgets
 
 1. Open **Finland Electricity Rates** once after installation.
 2. Open the macOS widget gallery.
 3. Search for **Finland Electricity Rates**.
-4. Choose the Electricity Rates or Grid Conditions widget and select a supported size.
+4. Choose Electricity Rates or Grid Conditions and select a supported size.
 
-If the gallery had already been open, close and reopen it after the app launches.
+If the gallery was already open, close and reopen it after the app launches.
 
 ## Fingrid emissions
 
-Fingrid’s grid-emissions endpoint requires an API key. Public builds deliberately leave this optional value unset, so the emissions value may appear unavailable while the keyless renewable forecast continues to work.
+Fingrid's grid-emissions API requires registration and an API key. The public release does not embed a shared credential. When emissions are unavailable, the independent, keyless renewable forecast continues to work.
 
 Developers who enable emissions must keep the credential in macOS Keychain and inject it through a local, unversioned Xcode build configuration. Never add a Fingrid key to source files, project files, shell scripts, screenshots, or commits.
 
+## Build from source
+
+The source installer remains available for contributors and requires the full Xcode app:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPrice-Widget/stable/script/install-from-source.sh | bash
+```
+
+Source builds are ad hoc-signed development artifacts and are not equivalent to the notarized product release.
+
 ## Remove the app
 
-Quit the host app, then move `~/Applications/SpotPriceWidget.app` to the Trash. Any timestamped backup beside it can also be moved to the Trash after you confirm the current installation works.
+Quit the host app, then move `Finland Electricity Rates.app` from Applications to the Trash. Timestamped backups beside the installation can also be moved to the Trash after confirming the current installation works.

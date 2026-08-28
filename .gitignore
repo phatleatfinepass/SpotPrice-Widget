@@ -2,6 +2,7 @@
 DerivedData/
 DerivedData-iOS/
 .derivedData*/
+dist/
 .playwright-cli/
 
 # Xcode user state stays local; shared schemes remain versioned.

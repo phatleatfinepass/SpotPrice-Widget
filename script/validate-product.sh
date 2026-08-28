@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+project_file="$repo_root/SpotPriceWidget.xcodeproj/project.pbxproj"
+
+fail() {
+  printf 'Product validation failed: %s\n' "$1" >&2
+  exit 1
+}
+
+for script_path in \
+  "$repo_root/script/install.sh" \
+  "$repo_root/script/install-from-source.sh" \
+  "$repo_root/script/package-release.sh"; do
+  bash -n "$script_path" || fail "invalid shell syntax in $script_path"
+done
+
+versions="$(awk -F ' = ' '/MARKETING_VERSION = / { gsub(/;/, "", $2); print $2 }' "$project_file" | sort -u)"
+version_count="$(printf '%s\n' "$versions" | awk 'NF { count += 1 } END { print count + 0 }')"
+[[ "$version_count" == "1" ]] || fail "all app targets must use the same marketing version"
+[[ "$versions" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+  || fail "marketing version must use semantic versioning"
+
+for required_path in \
+  "$repo_root/Shared/PrivacyInfo.xcprivacy" \
+  "$repo_root/PRIVACY.md" \
+  "$repo_root/SUPPORT.md" \
+  "$repo_root/CHANGELOG.md" \
+  "$repo_root/docs/RELEASE.md"; do
+  [[ -f "$required_path" ]] || fail "missing required product file: $required_path"
+done
+
+plutil -lint "$repo_root/Shared/PrivacyInfo.xcprivacy" >/dev/null
+plutil -lint "$repo_root/SpotPriceWidget/SpotPriceWidget.entitlements" >/dev/null
+plutil -lint "$repo_root/SpotPriceWidgetFinland/SpotPriceWidgetFinland.entitlements" >/dev/null
+
+if rg -n --hidden \
+  -g '!*.png' \
+  -g '!SpotPriceWidget.xcodeproj/project.pbxproj' \
+  '(FINGRID_API_KEY|x-api-key)[[:space:]]*[:=][[:space:]]*[A-Za-z0-9_-]{16,}' \
+  "$repo_root" >/dev/null; then
+  fail "a credential-shaped Fingrid value appears in the repository"
+fi
+
+printf 'Product metadata and release scripts are valid.\n'

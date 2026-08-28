@@ -39,6 +39,9 @@ jobs:
       - name: Show toolchain
         run: xcodebuild -version
 
+      - name: Validate product metadata
+        run: script/validate-product.sh
+
       - name: Build
         run: |
           xcodebuild -quiet \

@@ -19,15 +19,21 @@ Glanceable Finland electricity prices and grid conditions for macOS and iOS. The
   <img src="docs/assets/grid-conditions-medium.png" width="710" alt="Finland Grid Conditions medium widget">
 </p>
 
-## Quick install on macOS
+## Download for macOS
 
-You need macOS 26.5 or later and the full Xcode app. Then run:
+Download the latest signed and notarized release:
+
+[**Download Finland Electricity Rates for macOS**](https://github.com/phatleatfinepass/SpotPrice-Widget/releases/latest/download/Finland-Electricity-Rates.dmg)
+
+Open the disk image and drag **Finland Electricity Rates** to Applications. The release requires macOS 26.5 or later and does not require Xcode.
+
+For a Terminal-based installation or update, run:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPrice-Widget/stable/script/install.sh | bash
 ```
 
-The installer builds the reviewed `stable` branch locally, signs the result ad hoc, installs it in `~/Applications`, registers the widget extension, and opens the app. It does not use `sudo`, bypass Gatekeeper, or ask for an API key. See [the install guide](docs/INSTALL.md) for options and manual steps.
+The installer downloads the latest notarized release, verifies its SHA-256 checksum, Developer ID signature, and Gatekeeper acceptance, installs it in `~/Applications`, registers the widget extension, and opens the app. It does not use `sudo`, bypass Gatekeeper, or ask for an API key. See [the install guide](docs/INSTALL.md) for options and source-building steps.
 
 After installation, open the macOS widget gallery and search for **Finland Electricity Rates**.
 
@@ -47,6 +53,8 @@ Spot prices and the renewable signal are keyless. Fingrid’s emissions endpoint
 - `maintenance` is the integration line for fixes and upcoming releases.
 
 Contributions should target `maintenance`. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Product information: [Privacy](PRIVACY.md) · [Support](SUPPORT.md) · [Changelog](CHANGELOG.md)
 
 ## Build from source
 
