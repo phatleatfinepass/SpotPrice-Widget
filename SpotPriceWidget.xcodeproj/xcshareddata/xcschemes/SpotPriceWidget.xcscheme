@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "CBE02E86303E1D0000926383"
-               BuildableName = "SpotPriceWidget.app"
+               BuildableName = "Finland Electricity Rates.app"
                BlueprintName = "SpotPriceWidget"
                ReferencedContainer = "container:SpotPriceWidget.xcodeproj">
             </BuildableReference>
@@ -45,7 +45,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "CBE02E86303E1D0000926383"
-            BuildableName = "SpotPriceWidget.app"
+            BuildableName = "Finland Electricity Rates.app"
             BlueprintName = "SpotPriceWidget"
             ReferencedContainer = "container:SpotPriceWidget.xcodeproj">
          </BuildableReference>
@@ -62,7 +62,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "CBE02E86303E1D0000926383"
-            BuildableName = "SpotPriceWidget.app"
+            BuildableName = "Finland Electricity Rates.app"
             BlueprintName = "SpotPriceWidget"
             ReferencedContainer = "container:SpotPriceWidget.xcodeproj">
          </BuildableReference>

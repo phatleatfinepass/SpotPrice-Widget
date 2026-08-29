@@ -42,6 +42,10 @@ jobs:
       - name: Validate product metadata
         run: script/validate-product.sh
 
+      - name: Test Grid Conditions signal
+        if: matrix.name == 'macOS'
+        run: script/test-grid-conditions.sh
+
       - name: Build
         run: |
           xcodebuild -quiet \

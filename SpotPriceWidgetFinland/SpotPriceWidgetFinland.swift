@@ -241,7 +241,7 @@ struct LargeRateView: View {
             if let cheapest = presentation.cheapestHour {
                 PriceTimeInsight(
                     systemImage: "clock.arrow.circlepath",
-                    title: "Lowest around \(cheapest.start.formatted(.dateTime.hour().minute()))",
+                    title: "Lowest around \(FinlandTime.clock(cheapest.start))",
                     detail: "From \(cheapest.priceCents.widgetPrice) c/kWh"
                 )
             }
@@ -288,7 +288,7 @@ struct ExtraLargeRateView: View {
                     if let cheapest = presentation.cheapestHour {
                         PriceTimeInsight(
                             systemImage: "arrow.down",
-                            title: "Cheapest around \(cheapest.start.formatted(.dateTime.hour().minute()))",
+                            title: "Cheapest around \(FinlandTime.clock(cheapest.start))",
                             detail: "From \(cheapest.priceCents.widgetPrice) c/kWh"
                         )
                     }
@@ -296,7 +296,7 @@ struct ExtraLargeRateView: View {
                     if let priciest = presentation.priciestHour {
                         PriceTimeInsight(
                             systemImage: "arrow.up",
-                            title: "Peak around \(priciest.start.formatted(.dateTime.hour().minute()))",
+                            title: "Peak around \(FinlandTime.clock(priciest.start))",
                             detail: "Up to \(priciest.priceCents.widgetPrice) c/kWh"
                         )
                     }
@@ -314,7 +314,7 @@ struct AccessoryInlineRateView: View {
 
     var body: some View {
         if let bandEndsAt = presentation.bandEndsAt {
-            Text("⚡ Electricity Rates · \(presentation.currentBand.homeTitle) until \(bandEndsAt, format: .dateTime.hour().minute())")
+            Text("⚡ Electricity Rates · \(presentation.currentBand.homeTitle) until \(FinlandTime.clock(bandEndsAt))")
         } else {
             Text("⚡ Electricity Rates · \(presentation.currentPriceCents.widgetPrice) c/kWh")
         }
@@ -345,7 +345,7 @@ struct AccessoryRateView: View {
                     .font(.headline)
                     .lineLimit(1)
                 if let bandEndsAt = presentation.bandEndsAt {
-                    Text("Until \(bandEndsAt, format: .dateTime.hour().minute())")
+                    Text("Until \(FinlandTime.clock(bandEndsAt))")
                         .font(.caption2)
                 }
             }
@@ -374,7 +374,7 @@ struct HomeWidgetHeader: View {
                     .font(.caption.weight(.semibold))
                     .lineLimit(1)
                 if showsUpdatedTime, let presentation {
-                    Text("Finland · \(presentation.lastUpdated, format: .dateTime.hour().minute())")
+                    Text("Finland · \(FinlandTime.clock(presentation.lastUpdated))")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -403,8 +403,8 @@ struct RateStatusView: View {
 
             if let bandEndsAt = presentation.bandEndsAt {
                 Text(concise
-                    ? "Until \(bandEndsAt.formatted(.dateTime.hour().minute()))"
-                    : "\(presentation.currentBand.homeSentence) until \(bandEndsAt.formatted(.dateTime.hour().minute()))"
+                    ? "Until \(FinlandTime.clock(bandEndsAt))"
+                    : "\(presentation.currentBand.homeSentence) until \(FinlandTime.clock(bandEndsAt))"
                 )
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -463,7 +463,7 @@ private struct CompactRateStatusView: View {
         guard let bandEndsAt = presentation.bandEndsAt else {
             return presentation.currentBand.homeSentence
         }
-        return "\(presentation.currentBand.compactSentence) until \(bandEndsAt.formatted(.dateTime.hour().minute()))"
+        return "\(presentation.currentBand.compactSentence) until \(FinlandTime.clock(bandEndsAt))"
     }
 }
 
@@ -891,7 +891,7 @@ struct WidgetPriceChart: View {
                 )
                 .foregroundStyle(.secondary.opacity(compact ? 0.16 : 0.14))
                 .cornerRadius(compact ? 5 : 8, style: .continuous)
-                .accessibilityLabel(start.formatted(.dateTime.hour()))
+                .accessibilityLabel(FinlandTime.hour(start))
                 .accessibilityValue("Price not published yet")
             }
 
@@ -904,7 +904,7 @@ struct WidgetPriceChart: View {
                     hour.band.chartColor.opacity(hour.start == hours.first?.start ? 1 : (compact ? 0.82 : 0.88))
                 )
                 .cornerRadius(compact ? 5 : 8, style: .continuous)
-                .accessibilityLabel(hour.start.formatted(.dateTime.hour()))
+                .accessibilityLabel(FinlandTime.hour(hour.start))
                 .accessibilityValue(
                     "\(hour.priceCents.widgetPrice) cents per kilowatt-hour, \(hour.band.homeTitle)"
                 )
@@ -914,7 +914,7 @@ struct WidgetPriceChart: View {
         .chartXAxis {
             AxisMarks(values: axisDates) { _ in
                 AxisGridLine().foregroundStyle(.clear)
-                AxisValueLabel(format: .dateTime.hour())
+                AxisValueLabel(format: FinlandTime.hourStyle)
                     .font(.caption2)
             }
         }

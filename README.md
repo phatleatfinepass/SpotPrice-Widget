@@ -13,10 +13,10 @@ Glanceable Finland electricity prices and grid conditions for macOS and iOS. The
 ## Widgets
 
 - **Finland Electricity Rates** — current VAT-inclusive spot price, price band, range gauge, and the day’s hourly prices. Negative prices are supported.
-- **Finland Grid Conditions** — current grid-emissions intensity paired with a forward-looking renewable-energy signal.
+- **Finland Grid Conditions** — live grid-emissions intensity paired with a month-and-hour-normalized renewable outlook. Green and red appear only for strong, sustained forecast periods; neutral stays visually quiet.
 
 <p align="center">
-  <img src="docs/assets/grid-conditions-medium.png" width="710" alt="Finland Grid Conditions medium widget">
+  <img src="docs/assets/grid-conditions-design-preview.png" width="740" alt="Finland Grid Conditions small and medium widgets in light and dark appearances">
 </p>
 
 ## Download for macOS
@@ -48,6 +48,8 @@ The app contacts these data providers directly; it has no project-owned server o
 - Grid emissions: [Fingrid Open Data](https://data.fingrid.fi/en/)
 
 Spot prices and the renewable signal are keyless. Fingrid’s emissions endpoint requires a Fingrid API key and therefore shows as unavailable in the public build unless a developer supplies a key locally. No credential is stored in this repository or by the installer.
+
+The conservative renewable classifier and its visual semantics are documented in [Grid Conditions signal](docs/GRID-CONDITIONS.md).
 
 ## Branches
 

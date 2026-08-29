@@ -13,6 +13,7 @@ Thanks for helping improve SpotPriceWidget.
 Run both builds with the full Xcode app:
 
 ```bash
+script/test-grid-conditions.sh
 script/validate-product.sh
 
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \

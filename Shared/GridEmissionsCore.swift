@@ -18,6 +18,7 @@ enum GridEmissionsBand: String, Codable, Sendable {
 struct GridEmissionsPresentation: Hashable, Sendable {
     let gramsCO2PerKWh: Double?
     let band: GridEmissionsBand?
+    let measurementStart: Date?
     let measuredAt: Date?
     let isStale: Bool
 
@@ -29,6 +30,7 @@ struct GridEmissionsPresentation: Hashable, Sendable {
         GridEmissionsPresentation(
             gramsCO2PerKWh: gramsCO2PerKWh,
             band: band,
+            measurementStart: date.addingTimeInterval(-15 * 60),
             measuredAt: date,
             isStale: false
         )
@@ -38,6 +40,7 @@ struct GridEmissionsPresentation: Hashable, Sendable {
         GridEmissionsPresentation(
             gramsCO2PerKWh: nil,
             band: nil,
+            measurementStart: nil,
             measuredAt: nil,
             isStale: true
         )
@@ -283,12 +286,14 @@ struct GridEmissionsRepository {
             let presentation = GridEmissionsPresentation(
                 gramsCO2PerKWh: latest.value,
                 band: band,
+                measurementStart: latest.startTime,
                 measuredAt: latest.endTime,
                 isStale: false
             )
             cache.save(GridEmissionsCache.Payload(
                 presentationValue: latest.value,
                 presentationBand: band,
+                measurementStart: latest.startTime,
                 measuredAt: latest.endTime,
                 lowerThreshold: lowerThreshold,
                 upperThreshold: upperThreshold,
@@ -302,6 +307,8 @@ struct GridEmissionsRepository {
             return GridEmissionsPresentation(
                 gramsCO2PerKWh: cached.presentationValue,
                 band: cached.presentationBand,
+                measurementStart: cached.measurementStart
+                    ?? cached.measuredAt.addingTimeInterval(-15 * 60),
                 measuredAt: cached.measuredAt,
                 isStale: true
             )
@@ -352,6 +359,7 @@ struct GridEmissionsCache {
     struct Payload: Codable, Sendable {
         let presentationValue: Double
         let presentationBand: GridEmissionsBand?
+        let measurementStart: Date?
         let measuredAt: Date
         let lowerThreshold: Double?
         let upperThreshold: Double?

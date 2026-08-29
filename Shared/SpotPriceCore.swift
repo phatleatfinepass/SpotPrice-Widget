@@ -79,15 +79,27 @@ struct SpotPricePresentation: Hashable, Sendable {
         guard !sortedPoints.isEmpty else { return nil }
 
         let slotDuration: TimeInterval = 15 * 60
-        let current = sortedPoints.last(where: {
+        guard let current = sortedPoints.last(where: {
             $0.dateTime <= now && now < $0.dateTime.addingTimeInterval(slotDuration)
-        }) ?? sortedPoints.first(where: { $0.dateTime > now }) ?? sortedPoints.last!
+        }) else {
+            // Never label an expired cache entry or a future-only slot as the
+            // current rate. A missing current interval is unavailable data.
+            return nil
+        }
 
         let currentBand = current.band
-        let futurePoints = sortedPoints.filter { $0.dateTime >= current.dateTime }
-        let firstDifferentBand = futurePoints.first { $0.band != currentBand }
-        let bandEndsAt = firstDifferentBand?.dateTime
-            ?? futurePoints.last?.dateTime.addingTimeInterval(slotDuration)
+        var bandEndsAt = current.dateTime.addingTimeInterval(slotDuration)
+        var previous = current
+        for point in sortedPoints where point.dateTime > current.dateTime {
+            let expectedStart = previous.dateTime.addingTimeInterval(slotDuration)
+            guard abs(point.dateTime.timeIntervalSince(expectedStart)) <= 2 else { break }
+            guard point.band == currentBand else {
+                bandEndsAt = point.dateTime
+                break
+            }
+            bandEndsAt = point.dateTime.addingTimeInterval(slotDuration)
+            previous = point
+        }
 
         let rankProgress: Double
         if let rank = current.rank {

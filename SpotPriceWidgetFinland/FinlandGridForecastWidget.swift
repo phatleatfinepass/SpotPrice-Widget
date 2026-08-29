@@ -35,46 +35,31 @@ struct FinlandGridForecastProvider: TimelineProvider {
             do {
                 let result = try await GridForecastRepository().load()
                 let emissions = await emissionsLoad
-                let horizon = min(
-                    now.addingTimeInterval(24 * 60 * 60),
-                    result.availableThrough ?? now.addingTimeInterval(24 * 60 * 60)
+                let entry = makeEntry(at: now, result: result, emissions: emissions)
+                let entries = timelineEntries(
+                    startingWith: entry,
+                    result: result,
+                    now: now
                 )
-                var dates = [now]
-                dates.append(contentsOf: result.points.map(\.dateTime).filter { $0 > now && $0 <= horizon })
-
-                let entries = dates.compactMap { date -> FinlandGridForecastEntry? in
-                    guard let presentation = GridForecastPresentation.make(
-                        points: result.points,
-                        at: date,
-                        lastUpdated: result.fetchedAt,
-                        availableThrough: result.availableThrough,
-                        isStale: result.isStale
-                    ) else { return nil }
-                    return FinlandGridForecastEntry(
-                        date: date,
-                        presentation: presentation,
-                        emissions: emissions
-                    )
-                }
-
-                let fallback = FinlandGridForecastEntry(
+                completion(Timeline(
+                    entries: entries,
+                    policy: .after(refreshDate(for: entries, now: now))
+                ))
+            } catch {
+                let emissions = await emissionsLoad
+                let entry = FinlandGridForecastEntry(
                     date: now,
                     presentation: .unavailable(at: now),
                     emissions: emissions
                 )
+                let entries = timelineEntries(
+                    startingWith: entry,
+                    result: nil,
+                    now: now
+                )
                 completion(Timeline(
-                    entries: entries.isEmpty ? [fallback] : entries,
-                    policy: .after(now.addingTimeInterval(15 * 60))
-                ))
-            } catch {
-                let emissions = await emissionsLoad
-                completion(Timeline(
-                    entries: [FinlandGridForecastEntry(
-                        date: now,
-                        presentation: .unavailable(at: now),
-                        emissions: emissions
-                    )],
-                    policy: .after(now.addingTimeInterval(15 * 60))
+                    entries: entries,
+                    policy: .after(refreshDate(for: entries, now: now))
                 ))
             }
         }
@@ -85,25 +70,93 @@ struct FinlandGridForecastProvider: TimelineProvider {
         do {
             let result = try await GridForecastRepository().load()
             let emissions = await emissionsLoad
-            if let presentation = GridForecastPresentation.make(
-                points: result.points,
-                at: date,
-                lastUpdated: result.fetchedAt,
-                availableThrough: result.availableThrough,
-                isStale: result.isStale
-            ) {
-                return FinlandGridForecastEntry(
-                    date: date,
-                    presentation: presentation,
-                    emissions: emissions
-                )
-            }
+            return makeEntry(at: date, result: result, emissions: emissions)
         } catch { }
         return FinlandGridForecastEntry(
             date: date,
             presentation: .unavailable(at: date),
             emissions: await emissionsLoad
         )
+    }
+
+    private func makeEntry(
+        at date: Date,
+        result: GridForecastLoadResult,
+        emissions: GridEmissionsPresentation
+    ) -> FinlandGridForecastEntry {
+        FinlandGridForecastEntry(
+            date: date,
+            presentation: GridForecastPresentation.make(
+                points: result.points,
+                at: date,
+                lastUpdated: result.fetchedAt,
+                availableThrough: result.availableThrough,
+                isStale: result.isStale
+            ) ?? .unavailable(at: date),
+            emissions: emissions
+        )
+    }
+
+    private func timelineEntries(
+        startingWith entry: FinlandGridForecastEntry,
+        result: GridForecastLoadResult?,
+        now: Date
+    ) -> [FinlandGridForecastEntry] {
+        let emissionsAreFresh = GridConditionsSignal.emissionsAreFresh(
+            band: entry.emissions.band,
+            measuredAt: entry.emissions.measuredAt,
+            isStale: entry.emissions.isStale,
+            at: now
+        )
+        let initialEntry = FinlandGridForecastEntry(
+            date: entry.date,
+            presentation: entry.presentation,
+            emissions: emissionsAreFresh ? entry.emissions : entry.emissions.markingStale()
+        )
+
+        var safetyDates: [Date] = []
+        if let slotEnd = GridConditionsSignal.currentForecastSlotEnd(
+            in: entry.presentation.forecastPoints,
+            at: now
+        ), slotEnd > now {
+            safetyDates.append(slotEnd)
+        }
+        if let measuredAt = entry.emissions.measuredAt {
+            let expiry = measuredAt.addingTimeInterval(GridConditionsSignal.emissionsValidity)
+            if expiry > now {
+                safetyDates.append(expiry)
+            }
+        }
+        guard let safetyDate = safetyDates.min() else { return [initialEntry] }
+
+        let presentation = result.map {
+            GridForecastPresentation.make(
+                points: $0.points,
+                at: safetyDate,
+                lastUpdated: $0.fetchedAt,
+                availableThrough: $0.availableThrough,
+                isStale: $0.isStale
+            ) ?? .unavailable(at: safetyDate)
+        } ?? .unavailable(at: safetyDate)
+        return [
+            initialEntry,
+            FinlandGridForecastEntry(
+                date: safetyDate,
+                presentation: presentation,
+                emissions: entry.emissions.markingStale()
+            ),
+        ]
+    }
+
+    private func refreshDate(
+        for entries: [FinlandGridForecastEntry],
+        now: Date
+    ) -> Date {
+        let regularRefresh = now.addingTimeInterval(15 * 60)
+        guard let safetyRefresh = entries.dropFirst().first?.date else {
+            return regularRefresh
+        }
+        return min(safetyRefresh, regularRefresh)
     }
 }
 
@@ -147,7 +200,7 @@ private struct GridConditionsWidgetView: View {
         if presentation.isUnavailable {
             return "Finland grid conditions. \(emissions.accessibilitySummary) Renewable forecast is unavailable."
         }
-        return "Finland grid conditions. \(emissions.accessibilitySummary) \(presentation.accessibilitySummary)"
+        return "Finland grid conditions. \(emissions.accessibilitySummary) \(gridConditionsStatusSentence(presentation: presentation, emissions: emissions)) \(renewableAccessibilitySummary(presentation))"
     }
 }
 
@@ -164,23 +217,30 @@ private struct SmallGridConditionsView: View {
             GridEmissionsValue(emissions: emissions, compact: true)
                 .padding(.top, 2)
 
-            GridEmissionsStatus(emissions: emissions, compact: true)
+            GridEmissionsStatus(
+                emissions: emissions,
+                referenceDate: presentation.referenceDate,
+                compact: true
+            )
                 .padding(.top, 1)
 
             Spacer(minLength: 5)
 
-            Text(presentation.statusSentence)
-                .font(.system(size: 8, weight: .semibold))
+            Text(presentation.outlookSentence)
+                .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.72)
+                .minimumScaleFactor(0.82)
 
             if presentation.isUnavailable {
                 GridForecastUnavailableTimeline()
                     .frame(height: 43)
                     .padding(.top, 1)
             } else {
-                GridForecastTimeline(presentation: presentation, compact: true)
+                GridForecastTimeline(
+                    presentation: presentation,
+                    compact: true
+                )
                     .frame(height: 43)
                     .padding(.top, 1)
             }
@@ -195,13 +255,8 @@ private struct MediumGridConditionsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                HStack(spacing: 5) {
-                    Image(systemName: "leaf.fill")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.green)
-                    Text("Grid Conditions")
-                        .font(.system(size: 13, weight: .semibold))
-                }
+                Text("Grid Conditions")
+                    .font(.system(size: 13, weight: .semibold))
 
                 Spacer(minLength: 8)
 
@@ -215,24 +270,31 @@ private struct MediumGridConditionsView: View {
 
                 Spacer(minLength: 4)
 
-                GridEmissionsStatus(emissions: emissions, compact: false)
+                GridEmissionsStatus(
+                    emissions: emissions,
+                    referenceDate: presentation.referenceDate,
+                    compact: false
+                )
             }
             .padding(.top, 2)
 
             Spacer(minLength: 4)
 
-            Text(presentation.statusSentence)
-                .font(.system(size: 9, weight: .semibold))
+            Text(presentation.outlookSentence)
+                .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.82)
+                .minimumScaleFactor(0.9)
 
             if presentation.isUnavailable {
                 GridForecastUnavailableTimeline()
                     .frame(height: 45)
                     .padding(.top, 1)
             } else {
-                GridForecastTimeline(presentation: presentation, compact: false)
+                GridForecastTimeline(
+                    presentation: presentation,
+                    compact: false
+                )
                     .frame(height: 45)
                     .padding(.top, 1)
             }
@@ -266,31 +328,72 @@ private struct GridEmissionsValue: View {
 
 private struct GridEmissionsStatus: View {
     let emissions: GridEmissionsPresentation
+    let referenceDate: Date
     let compact: Bool
 
     var body: some View {
         HStack(spacing: compact ? 4 : 5) {
-            Image(systemName: "leaf.fill")
-                .font(.system(size: compact ? 10 : 12, weight: .semibold))
+            if let symbolName {
+                Image(systemName: symbolName)
+                    .font(.system(size: compact ? 10 : 12, weight: .semibold))
+            }
 
-            Text(emissions.statusText)
+            Text(statusText)
                 .font(.system(size: compact ? 11 : 13, weight: .semibold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
-        .foregroundStyle(GridConditionsPalette.color(for: emissions.band))
+        .foregroundStyle(GridConditionsPalette.color(
+            for: emissions.band,
+            isStale: !GridConditionsSignal.emissionsAreFresh(
+                band: emissions.band,
+                measuredAt: emissions.measuredAt,
+                isStale: emissions.isStale,
+                at: referenceDate
+            )
+        ))
+    }
+
+    private var isFresh: Bool {
+        GridConditionsSignal.emissionsAreFresh(
+            band: emissions.band,
+            measuredAt: emissions.measuredAt,
+            isStale: emissions.isStale,
+            at: referenceDate
+        )
+    }
+
+    private var symbolName: String? {
+        guard isFresh else { return "carbon.dioxide.cloud" }
+        return switch emissions.band {
+        case .cleaner: "leaf.fill"
+        case .higher: "carbon.dioxide.cloud.fill"
+        case .typical, nil: nil
+        }
+    }
+
+    private var statusText: String {
+        guard isFresh else { return "Data unavailable" }
+        return switch emissions.band {
+        case .cleaner: "Cleaner now"
+        case .typical: "Usual range"
+        case .higher: "Higher emissions"
+        case nil: "Data unavailable"
+        }
     }
 }
 
 private struct GridForecastTimeline: View {
+    @Environment(\.widgetRenderingMode) private var renderingMode
     let presentation: GridForecastPresentation
     let compact: Bool
 
     var body: some View {
         GeometryReader { proxy in
             let width = proxy.size.width
-            let trackHeight: CGFloat = compact ? 28 : 30
-            let labelY: CGFloat = compact ? 37 : 41
+            let trackHeight: CGFloat = compact ? 27 : 31
+            let labelY: CGFloat = compact ? 37 : 42
+            let labelWidth: CGFloat = usesMinuteLabels ? 40 : 24
 
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: compact ? 6 : 7, style: .continuous)
@@ -310,17 +413,26 @@ private struct GridForecastTimeline: View {
                     let runWidth = max(endX - startX, compact ? 3 : 4)
                     let inset: CGFloat = compact ? 1.5 : 2
 
+                    let shape = RoundedRectangle(
+                        cornerRadius: min(compact ? 7 : 8, runWidth / 2),
+                        style: .continuous
+                    )
+
                     ZStack {
-                        RoundedRectangle(
-                            cornerRadius: min(compact ? 7 : 8, runWidth / 2),
-                            style: .continuous
-                        )
-                        .fill(GridConditionsPalette.color(for: run.state))
+                        if renderingMode == .accented, run.state == .lessClean {
+                            shape
+                                .fill(.secondary.opacity(0.1))
+                                .overlay {
+                                    shape.strokeBorder(.secondary, lineWidth: 2)
+                                }
+                        } else {
+                            shape.fill(GridConditionsPalette.color(for: run.state))
+                        }
 
                         if runWidth >= (compact ? 20 : 24) {
                             Image(systemName: symbolName(for: run.state))
                                 .font(.system(size: compact ? 9 : 10.5, weight: .bold))
-                                .foregroundStyle(.black.opacity(0.78))
+                                .foregroundStyle(symbolColor(for: run.state))
                         }
                     }
                     .frame(
@@ -335,15 +447,15 @@ private struct GridForecastTimeline: View {
                 }
 
                 ForEach(Array(labelDates.enumerated()), id: \.offset) { index, date in
-                    Text(date.formatted(.dateTime.hour()))
-                        .font(.system(size: compact ? 6.2 : 7.5, weight: .regular, design: .rounded))
+                    Text(labelText(for: date, index: index))
+                        .font(.system(size: compact ? 10 : 10.5, weight: index == 0 ? .semibold : .regular, design: .rounded))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
-                        .frame(width: 24)
+                        .frame(width: labelWidth)
                         .position(
                             x: min(
-                                max(labelPosition(index: index, width: width), 10),
-                                width - 10
+                                max(xPosition(for: date, width: width), labelWidth / 2),
+                                width - labelWidth / 2
                             ),
                             y: labelY
                         )
@@ -358,41 +470,31 @@ private struct GridForecastTimeline: View {
         return min(presentation.timelineEnd, presentation.timelineStart.addingTimeInterval(familyDuration))
     }
 
-    private var scheduleRuns: [GridSignalRun] {
-        presentation.signalRuns.compactMap { run in
-            let start = max(run.start, presentation.timelineStart)
-            let end = min(run.end, displayEnd)
-            guard end > start else { return nil }
-            return GridSignalRun(state: run.state, start: start, end: end)
-        }
-    }
-
-    private var highlightedRuns: [GridSignalRun] {
-        scheduleRuns.filter { $0.state != .average }
+    private var highlightedRuns: [GridConditionTimelineRun] {
+        GridConditionsSignal.timelineRuns(
+            forecastPoints: presentation.forecastPoints,
+            isForecastStale: presentation.isStale,
+            timelineStart: presentation.timelineStart,
+            timelineEnd: displayEnd
+        )
     }
 
     private var gridDates: [Date] {
-        let step = Double(compact ? 1 : 2) * 60 * 60
-        let duration = displayEnd.timeIntervalSince(presentation.timelineStart)
-        let count = max(Int(floor(duration / step)), 1)
-        guard count > 1 else { return [] }
-        return (1..<count).map {
-            presentation.timelineStart.addingTimeInterval(Double($0) * step)
-        }
+        FinlandTime.timelineTicks(
+            from: presentation.timelineStart,
+            through: displayEnd,
+            maximumCount: 13
+        )
+        .dropFirst()
+        .filter { $0 < displayEnd }
     }
 
     private var labelDates: [Date] {
-        let count = compact ? 4 : 5
-        let duration = displayEnd.timeIntervalSince(presentation.timelineStart)
-        let step = duration / Double(max(count - 1, 1))
-        return (0..<count).map {
-            presentation.timelineStart.addingTimeInterval(Double($0) * step)
-        }
-    }
-
-    private func labelPosition(index: Int, width: CGFloat) -> CGFloat {
-        let denominator = CGFloat(max(labelDates.count - 1, 1))
-        return width * CGFloat(index) / denominator
+        FinlandTime.timelineTicks(
+            from: presentation.timelineStart,
+            through: displayEnd,
+            maximumCount: compact ? 3 : 5
+        )
     }
 
     private func xPosition(for date: Date, width: CGFloat) -> CGFloat {
@@ -401,12 +503,28 @@ private struct GridForecastTimeline: View {
         return width * CGFloat(min(max(progress, 0), 1))
     }
 
-    private func symbolName(for state: GridSignalState) -> String {
+    private func symbolName(for state: GridConditionVisualState) -> String {
         switch state {
-        case .high: "leaf.fill"
-        case .low: "carbon.dioxide.cloud.fill"
-        case .average: ""
+        case .clean: "leaf.fill"
+        case .lessClean: "carbon.dioxide.cloud.fill"
         }
+    }
+
+    private func symbolColor(for state: GridConditionVisualState) -> Color {
+        if renderingMode == .accented { return .primary }
+        return state == .clean ? .black.opacity(0.78) : .white.opacity(0.94)
+    }
+
+    private func labelText(for date: Date, index: Int) -> String {
+        if index == 0 { return "Now" }
+        return usesMinuteLabels ? FinlandTime.clock(date) : FinlandTime.hour(date)
+    }
+
+    private var usesMinuteLabels: Bool {
+        displayEnd.timeIntervalSince(presentation.timelineStart) < 3 * 60 * 60
+            || labelDates.dropFirst().contains {
+                Calendar.helsinki.component(.minute, from: $0) != 0
+            }
     }
 }
 
@@ -425,21 +543,75 @@ private struct GridForecastUnavailableTimeline: View {
 }
 
 private enum GridConditionsPalette {
-    static func color(for state: GridSignalState) -> Color {
+    static func color(for state: GridConditionVisualState) -> Color {
         switch state {
-        case .low: .red
-        case .average: .clear
-        case .high: .green
+        case .clean: .green
+        case .lessClean: .red
         }
     }
 
-    static func color(for band: GridEmissionsBand?) -> Color {
-        switch band {
+    static func color(for band: GridEmissionsBand?, isStale: Bool) -> Color {
+        guard !isStale else { return .secondary }
+        return switch band {
         case .cleaner: .green
-        case .typical: .orange
+        case .typical: .secondary
         case .higher: .red
         case nil: .secondary
         }
+    }
+}
+
+private func gridConditionsStatusSentence(
+    presentation: GridForecastPresentation,
+    emissions: GridEmissionsPresentation
+) -> String {
+    let currentEmissionsBand = GridConditionsSignal.emissionsBandForCurrentForecastSlot(
+        forecastPoints: presentation.forecastPoints,
+        band: emissions.band,
+        measurementStart: emissions.measurementStart,
+        measuredAt: emissions.measuredAt,
+        isStale: emissions.isStale,
+        at: presentation.referenceDate
+    )
+    return GridConditionsSignal.statusSentence(
+        renewableState: GridConditionsSignal.currentForecastPoint(
+            in: presentation.forecastPoints,
+            at: presentation.referenceDate
+        )?.state,
+        isForecastStale: presentation.isStale,
+        isForecastUnavailable: presentation.isUnavailable,
+        emissionsBand: currentEmissionsBand,
+        measuredAt: emissions.measuredAt,
+        isEmissionsStale: currentEmissionsBand == nil,
+        at: presentation.referenceDate
+    )
+}
+
+private func renewableAccessibilitySummary(
+    _ presentation: GridForecastPresentation
+) -> String {
+    guard !presentation.isUnavailable else { return "" }
+    guard let current = GridConditionsSignal.currentForecastPoint(
+        in: presentation.forecastPoints,
+        at: presentation.referenceDate
+    ) else {
+        return "The renewable forecast does not cover the current time."
+    }
+    let share = "Renewable share is \(current.renewableShare.formatted(.number.precision(.fractionLength(0)))) percent and \(current.state.title.lowercased())."
+    let end = presentation.stateEndsAt ?? presentation.availableThrough
+    guard let end else { return share }
+    return "\(share.dropLast()) through \(FinlandTime.clock(end))."
+}
+
+private extension GridEmissionsPresentation {
+    func markingStale() -> GridEmissionsPresentation {
+        GridEmissionsPresentation(
+            gramsCO2PerKWh: gramsCO2PerKWh,
+            band: band,
+            measurementStart: measurementStart,
+            measuredAt: measuredAt,
+            isStale: true
+        )
     }
 }
 

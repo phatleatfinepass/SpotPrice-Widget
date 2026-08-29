@@ -110,7 +110,7 @@ private struct CurrentRateCard: View {
                     .font(.system(.title, design: .rounded, weight: .bold))
 
                 if let bandEndsAt = presentation.bandEndsAt {
-                    Text("Until \(bandEndsAt, format: .dateTime.hour().minute())")
+                    Text("Until \(FinlandTime.clock(bandEndsAt))")
                         .font(.headline)
                         .foregroundStyle(.secondary)
                 }
@@ -176,10 +176,10 @@ private struct UpcomingPriceSection: View {
             }
 
             HStack {
-                Text("Updated \(presentation.lastUpdated, format: .dateTime.hour().minute())")
+                Text("Updated \(FinlandTime.clock(presentation.lastUpdated))")
                 Spacer()
                 if let availableThrough = presentation.availableThrough {
-                    Text("Available through \(availableThrough, format: .dateTime.weekday(.abbreviated).hour().minute())")
+                    Text("Available through \(FinlandTime.weekdayClock(availableThrough))")
                 }
             }
             .font(.caption2)
@@ -228,7 +228,7 @@ private struct PriceChart: View {
             AxisMarks(values: .stride(by: .hour, count: 4)) { _ in
                 AxisGridLine().foregroundStyle(.clear)
                 AxisTick().foregroundStyle(.secondary)
-                AxisValueLabel(format: .dateTime.hour())
+                AxisValueLabel(format: FinlandTime.hourStyle)
                     .font(.caption2)
             }
         }
@@ -336,7 +336,7 @@ private struct HourlyPriceRow: View {
                 .frame(width: 10, height: 10)
                 .accessibilityHidden(true)
 
-            Text(hour.start, format: .dateTime.hour().minute())
+            Text(FinlandTime.clock(hour.start))
                 .font(.body.monospacedDigit())
                 .frame(width: 54, alignment: .leading)
 

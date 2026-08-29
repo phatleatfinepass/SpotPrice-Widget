@@ -5,6 +5,7 @@ repository="${SPOT_PRICE_REPOSITORY:-phatleatfinepass/SpotPrice-Widget}"
 ref="${SPOT_PRICE_REF:-stable}"
 install_dir="${SPOT_PRICE_INSTALL_DIR:-${HOME}/Applications}"
 source_override="${SPOT_PRICE_SOURCE_DIR:-}"
+configuration="${SPOT_PRICE_CONFIGURATION:-Release}"
 app_name="Finland Electricity Rates"
 app_bundle_id="personal.SpotPriceWidget"
 widget_bundle_id="personal.SpotPriceWidget.SpotPriceWidgetFinland"
@@ -58,6 +59,11 @@ case "$install_dir" in
   ""|"/") fail "refusing unsafe install directory: '$install_dir'" ;;
 esac
 
+case "$configuration" in
+  Debug|Release) ;;
+  *) fail "SPOT_PRICE_CONFIGURATION must be Debug or Release" ;;
+esac
+
 for command_name in awk curl tar xcodebuild codesign ditto; do
   command -v "$command_name" >/dev/null 2>&1 \
     || fail "required command is missing: $command_name"
@@ -95,20 +101,33 @@ else
 fi
 
 derived_data="$work_dir/DerivedData"
-printf 'Building the macOS app locally…\n'
+build_settings=(CODE_SIGNING_ALLOWED=NO)
+
+printf 'Building the macOS app locally (%s)…\n' "$configuration"
 xcodebuild -quiet \
   -project "$source_root/SpotPriceWidget.xcodeproj" \
   -scheme SpotPriceWidget \
-  -configuration Release \
+  -configuration "$configuration" \
   -destination 'platform=macOS' \
   -derivedDataPath "$derived_data" \
-  CODE_SIGNING_ALLOWED=NO \
+  "${build_settings[@]}" \
   build
 
-built_app="$derived_data/Build/Products/Release/${app_name}.app"
+built_app="$derived_data/Build/Products/${configuration}/${app_name}.app"
 built_extension="$built_app/Contents/PlugIns/SpotPriceWidgetFinlandExtension.appex"
 [[ -d "$built_app" && -d "$built_extension" ]] \
   || fail "build completed without the expected app and widget extension"
+
+if [[ "$configuration" == "Debug" && -n "${FINGRID_API_KEY:-}" ]]; then
+  # Inject only after Xcode finishes so the credential never enters build
+  # settings or logs. The bundle is signed immediately afterwards.
+  widget_info="$built_extension/Contents/Info.plist"
+  if /usr/libexec/PlistBuddy -c 'Print :FingridAPIKey' "$widget_info" >/dev/null 2>&1; then
+    /usr/libexec/PlistBuddy -c "Set :FingridAPIKey $FINGRID_API_KEY" "$widget_info" >/dev/null
+  else
+    /usr/libexec/PlistBuddy -c "Add :FingridAPIKey string $FINGRID_API_KEY" "$widget_info" >/dev/null
+  fi
+fi
 
 codesign --force --sign - \
   --entitlements "$source_root/SpotPriceWidgetFinland/SpotPriceWidgetFinland.entitlements" \

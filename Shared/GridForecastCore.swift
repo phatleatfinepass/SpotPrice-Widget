@@ -29,34 +29,22 @@ struct GridForecastSignalPoint: Hashable, Identifiable, Sendable {
 }
 
 enum FinlandRenewableSignal {
-    private static let smoothingSlotCount = 4
-    private static let hysteresis = 1.0
-
-    // P33/P67 of Finland's hourly renewable share for each calendar month.
-    // Every year is normalized to hourly grain before pooling, so the newer
-    // 15-minute history is not weighted four times more than older data.
-    // Source window: Energy-Charts public-power data, 2023–2025.
-    private static let monthlyThresholds: [Int: GridSignalThresholds] = [
-        1: .init(lower: 39.6, upper: 54.0),
-        2: .init(lower: 39.3, upper: 52.7),
-        3: .init(lower: 37.9, upper: 51.4),
-        4: .init(lower: 41.7, upper: 51.8),
-        5: .init(lower: 45.6, upper: 58.0),
-        6: .init(lower: 42.9, upper: 53.0),
-        7: .init(lower: 36.1, upper: 46.7),
-        8: .init(lower: 39.7, upper: 48.9),
-        9: .init(lower: 46.2, upper: 60.0),
-        10: .init(lower: 45.6, upper: 61.5),
-        11: .init(lower: 40.2, upper: 56.8),
-        12: .init(lower: 40.0, upper: 56.8),
-    ]
+    private static let expectedSlotDuration: TimeInterval = 15 * 60
+    private static let smoothingDuration: TimeInterval = 60 * 60
+    private static let minimumSignalDuration: TimeInterval = 60 * 60
+    private static let timestampTolerance: TimeInterval = 2
+    private static let minimumWindowPointCount = 4
+    private static let minimumWindowIQR = 3.0
+    private static let highEntryPercentile = 0.75
+    private static let highExitPercentile = 0.65
+    private static let lowEntryPercentile = 0.25
+    private static let lowExitPercentile = 0.35
 
     static func thresholds(
         at date: Date,
         calendar: Calendar = .helsinki
     ) -> GridSignalThresholds {
-        monthlyThresholds[calendar.component(.month, from: date)]
-            ?? GridSignalThresholds(lower: 40, upper: 55)
+        FinlandRenewableBaseline.thresholds(at: date, calendar: calendar)
     }
 
     static func classify(
@@ -64,72 +52,199 @@ enum FinlandRenewableSignal {
         calendar: Calendar = .helsinki
     ) -> [GridForecastSignalPoint] {
         let sorted = points
-            .filter { $0.renewableShare != nil }
+            .filter { point in
+                guard let share = point.renewableShare else { return false }
+                return (0...100).contains(share)
+            }
             .sorted { $0.dateTime < $1.dateTime }
         guard !sorted.isEmpty else { return [] }
 
-        var previousState: GridSignalState?
-        return sorted.indices.compactMap { index in
-            guard let share = sorted[index].renewableShare else { return nil }
-            let windowEnd = min(index + smoothingSlotCount, sorted.count)
-            let windowShares = sorted[index..<windowEnd].compactMap { point -> Double? in
-                guard point.dateTime.timeIntervalSince(sorted[index].dateTime) < 60 * 60 else {
-                    return nil
-                }
-                return point.renewableShare
+        let cadence = inferredCadence(in: sorted)
+        let cadenceIsSupported = abs(cadence - expectedSlotDuration) <= timestampTolerance
+        let smoothed = sorted.indices.map { index in
+            forwardMean(at: index, in: sorted, cadence: cadence)
+        }
+        let windowValues = smoothed.compactMap { $0 }
+        let windowIsDecisive: Bool = {
+            guard
+                cadenceIsSupported,
+                windowValues.count >= minimumWindowPointCount,
+                let lowerQuartile = quantile(0.25, in: windowValues),
+                let upperQuartile = quantile(0.75, in: windowValues)
+            else { return false }
+            return upperQuartile - lowerQuartile >= minimumWindowIQR
+        }()
+
+        var drafts: [ClassifiedDraft] = []
+        var previousState = GridSignalState.average
+        var previousDate: Date?
+
+        for index in sorted.indices {
+            guard let share = sorted[index].renewableShare else { continue }
+            let providerWarning = sorted[index].signal == -1
+            let isContiguous = previousDate.map {
+                abs(sorted[index].dateTime.timeIntervalSince($0) - cadence) <= timestampTolerance
+            } ?? true
+            if !isContiguous {
+                previousState = .average
             }
-            let smoothedShare = windowShares.isEmpty
-                ? share
-                : windowShares.reduce(0, +) / Double(windowShares.count)
-            let thresholds = thresholds(at: sorted[index].dateTime, calendar: calendar)
 
             let state: GridSignalState
-            if sorted[index].signal == -1 {
-                // Keep an explicit provider congestion warning conservative.
+            if providerWarning {
+                // Energy-Charts reserves -1 for grid congestion. It remains an
+                // immediate warning even when the renewable signal is neutral.
                 state = .low
-            } else {
+            } else if windowIsDecisive,
+                      let smoothedShare = smoothed[index] {
+                let percentile = midrankPercentile(of: smoothedShare, in: windowValues)
                 state = classifiedState(
                     for: smoothedShare,
-                    thresholds: thresholds,
+                    windowPercentile: percentile,
+                    thresholds: thresholds(at: sorted[index].dateTime, calendar: calendar),
                     previousState: previousState
                 )
+            } else {
+                state = .average
             }
-            previousState = state
 
-            return GridForecastSignalPoint(
+            drafts.append(ClassifiedDraft(
                 dateTime: sorted[index].dateTime,
                 renewableShare: share,
-                smoothedRenewableShare: smoothedShare,
-                state: state
+                smoothedRenewableShare: smoothed[index] ?? share,
+                state: state,
+                providerWarning: providerWarning
+            ))
+            previousState = state
+            previousDate = sorted[index].dateTime
+        }
+
+        enforceMinimumRunDuration(in: &drafts, cadence: cadence)
+        return drafts.map {
+            GridForecastSignalPoint(
+                dateTime: $0.dateTime,
+                renewableShare: $0.renewableShare,
+                smoothedRenewableShare: $0.smoothedRenewableShare,
+                state: $0.state
             )
         }
     }
 
     private static func classifiedState(
         for share: Double,
+        windowPercentile: Double,
         thresholds: GridSignalThresholds,
-        previousState: GridSignalState?
+        previousState: GridSignalState
     ) -> GridSignalState {
-        guard let previousState else {
-            if share < thresholds.lower { return .low }
-            if share > thresholds.upper { return .high }
-            return .average
-        }
+        let historicalHigh = share >= thresholds.upper
+        let historicalLow = share <= thresholds.lower
+        let entersHigh = historicalHigh && windowPercentile >= highEntryPercentile
+        let entersLow = historicalLow && windowPercentile <= lowEntryPercentile
 
         switch previousState {
         case .low:
-            if share > thresholds.upper + hysteresis { return .high }
-            if share > thresholds.lower + hysteresis { return .average }
-            return .low
+            if entersHigh { return .high }
+            if historicalLow, windowPercentile <= lowExitPercentile { return .low }
+            return .average
         case .average:
-            if share < thresholds.lower - hysteresis { return .low }
-            if share > thresholds.upper + hysteresis { return .high }
+            if entersLow { return .low }
+            if entersHigh { return .high }
             return .average
         case .high:
-            if share < thresholds.lower - hysteresis { return .low }
-            if share < thresholds.upper - hysteresis { return .average }
-            return .high
+            if entersLow { return .low }
+            if historicalHigh, windowPercentile >= highExitPercentile { return .high }
+            return .average
         }
+    }
+
+    private static func forwardMean(
+        at index: Int,
+        in points: [GridForecastPoint],
+        cadence: TimeInterval
+    ) -> Double? {
+        guard abs(cadence - expectedSlotDuration) <= timestampTolerance else { return nil }
+        let requiredCount = Int((smoothingDuration / cadence).rounded())
+        guard requiredCount > 0, index + requiredCount <= points.count else { return nil }
+
+        let start = points[index].dateTime
+        var values: [Double] = []
+        for offset in 0..<requiredCount {
+            let point = points[index + offset]
+            let expectedDate = start.addingTimeInterval(Double(offset) * cadence)
+            guard
+                abs(point.dateTime.timeIntervalSince(expectedDate)) <= timestampTolerance,
+                let share = point.renewableShare,
+                (0...100).contains(share)
+            else { return nil }
+            values.append(share)
+        }
+        return values.reduce(0, +) / Double(values.count)
+    }
+
+    private static func inferredCadence(in points: [GridForecastPoint]) -> TimeInterval {
+        let differences = zip(points, points.dropFirst())
+            .map { $1.dateTime.timeIntervalSince($0.dateTime) }
+            .filter { $0 > 0 && $0 <= smoothingDuration }
+            .sorted()
+        guard !differences.isEmpty else { return expectedSlotDuration }
+        return differences[differences.count / 2]
+    }
+
+    private static func midrankPercentile(of value: Double, in values: [Double]) -> Double {
+        guard !values.isEmpty else { return 0.5 }
+        let below = values.lazy.filter { $0 < value }.count
+        let equal = values.lazy.filter { abs($0 - value) < 0.000_001 }.count
+        return (Double(below) + Double(equal) / 2) / Double(values.count)
+    }
+
+    private static func quantile(_ probability: Double, in values: [Double]) -> Double? {
+        let sorted = values.sorted()
+        guard let first = sorted.first else { return nil }
+        guard sorted.count > 1 else { return first }
+        let position = probability * Double(sorted.count - 1)
+        let lowerIndex = Int(floor(position))
+        let upperIndex = Int(ceil(position))
+        guard lowerIndex != upperIndex else { return sorted[lowerIndex] }
+        let fraction = position - Double(lowerIndex)
+        return sorted[lowerIndex] + (sorted[upperIndex] - sorted[lowerIndex]) * fraction
+    }
+
+    private static func enforceMinimumRunDuration(
+        in drafts: inout [ClassifiedDraft],
+        cadence: TimeInterval
+    ) {
+        guard cadence > 0 else { return }
+        var index = 0
+        while index < drafts.count {
+            let state = drafts[index].state
+            guard state != .average else {
+                index += 1
+                continue
+            }
+
+            var end = index + 1
+            while end < drafts.count,
+                  drafts[end].state == state,
+                  abs(drafts[end].dateTime.timeIntervalSince(drafts[end - 1].dateTime) - cadence)
+                    <= timestampTolerance {
+                end += 1
+            }
+
+            let duration = Double(end - index) * cadence
+            if duration < minimumSignalDuration {
+                for runIndex in index..<end where !drafts[runIndex].providerWarning {
+                    drafts[runIndex].state = .average
+                }
+            }
+            index = end
+        }
+    }
+
+    private struct ClassifiedDraft {
+        let dateTime: Date
+        let renewableShare: Double
+        let smoothedRenewableShare: Double
+        var state: GridSignalState
+        let providerWarning: Bool
     }
 }
 
@@ -185,28 +300,46 @@ struct GridForecastPresentation: Hashable, Sendable {
         isStale: Bool,
         locationName: String = "Finland"
     ) -> GridForecastPresentation? {
-        let classified = FinlandRenewableSignal.classify(points: points)
+        let slotDuration: TimeInterval = 15 * 60
+        let sorted = points
+            .filter { point in
+                guard let share = point.renewableShare else { return false }
+                return (0...100).contains(share)
+            }
+            .sorted { $0.dateTime < $1.dateTime }
+        guard !sorted.isEmpty else { return nil }
+
+        guard let currentRaw = sorted.last(where: {
+            $0.dateTime <= now && now < $0.dateTime.addingTimeInterval(slotDuration)
+        }) else {
+            // A forecast must actually contain the wall clock. Do not present
+            // an expired point, a future-only point, or a gap as "current."
+            return nil
+        }
+
+        let coverageStart = currentRaw.dateTime
+        let timelineStart = now
+        let requestedEnd = timelineStart.addingTimeInterval(24 * 60 * 60)
+        // `available_until` is documented and observed as the last record's
+        // start. Repositories now normalize it to an exclusive coverage end;
+        // maxing with the final record also repairs older cached payloads.
+        let finalRecordEnd = sorted.last!.dateTime.addingTimeInterval(slotDuration)
+        let dataEnd = max(availableThrough ?? finalRecordEnd, finalRecordEnd)
+        let end = min(requestedEnd, dataEnd)
+        guard end > timelineStart else { return nil }
+
+        let visibleRawPoints = sorted.filter {
+            $0.dateTime < end
+                && $0.dateTime.addingTimeInterval(slotDuration) > timelineStart
+        }
+        let classified = FinlandRenewableSignal.classify(points: visibleRawPoints)
         guard !classified.isEmpty else { return nil }
 
-        let slotDuration: TimeInterval = 15 * 60
-        let current = classified.last(where: {
+        guard let current = classified.last(where: {
             $0.dateTime <= now && now < $0.dateTime.addingTimeInterval(slotDuration)
-        }) ?? classified.first(where: { $0.dateTime > now }) ?? classified.last!
-
-        let start = current.dateTime
+        }) else { return nil }
         let state = current.state
-        let future = classified.filter { $0.dateTime >= current.dateTime }
-        let stateEndsAt = future.first(where: { $0.state != state })?.dateTime
-
-        let requestedEnd = start.addingTimeInterval(24 * 60 * 60)
-        let dataEnd = availableThrough
-            ?? classified.last!.dateTime.addingTimeInterval(slotDuration)
-        let end = min(requestedEnd, dataEnd)
-        guard end > start else { return nil }
-
-        let visiblePoints = classified.filter {
-            $0.dateTime < end && $0.dateTime.addingTimeInterval(slotDuration) > start
-        }
+        let visiblePoints = classified
 
         var runs: [GridSignalRun] = []
         var openState: GridSignalState?
@@ -215,7 +348,7 @@ struct GridForecastPresentation: Hashable, Sendable {
 
         for point in visiblePoints {
             let pointState = point.state
-            let slotStart = max(point.dateTime, start)
+            let slotStart = max(point.dateTime, timelineStart)
             let slotEnd = min(point.dateTime.addingTimeInterval(slotDuration), end)
 
             if openState == pointState, openEnd == slotStart {
@@ -233,6 +366,7 @@ struct GridForecastPresentation: Hashable, Sendable {
         if let openState, let openStart, let openEnd {
             runs.append(GridSignalRun(state: openState, start: openStart, end: openEnd))
         }
+        let stateEndsAt = runs.first?.end
 
         return GridForecastPresentation(
             referenceDate: now,
@@ -242,11 +376,11 @@ struct GridForecastPresentation: Hashable, Sendable {
             stateEndsAt: stateEndsAt,
             signalRuns: runs,
             forecastPoints: visiblePoints,
-            signalThresholds: FinlandRenewableSignal.thresholds(at: start),
-            timelineStart: start,
+            signalThresholds: FinlandRenewableSignal.thresholds(at: coverageStart),
+            timelineStart: timelineStart,
             timelineEnd: end,
             lastUpdated: lastUpdated,
-            availableThrough: availableThrough,
+            availableThrough: dataEnd,
             isStale: isStale,
             isUnavailable: false
         )
@@ -312,11 +446,10 @@ struct GridForecastPresentation: Hashable, Sendable {
 
         switch currentState {
         case .high:
-            if let nextRun {
-                return "Electricity is clean until \(formattedTime(nextRun.start))."
-            } else {
-                return "Electricity stays clean for the next 24 hours."
+            if let end = currentStateDisplayEnd {
+                return "Electricity is clean until \(formattedTime(end))."
             }
+            return "Electricity stays clean for the next 24 hours."
         case .average:
             if let nextRun {
                 switch nextRun.state {
@@ -330,17 +463,50 @@ struct GridForecastPresentation: Hashable, Sendable {
             }
             return "Grid conditions stay steady."
         case .low:
-            if let nextRun {
-                return "Electricity is less clean until \(formattedTime(nextRun.start))."
-            } else {
-                return "Electricity stays less clean for the next 24 hours."
+            if let end = currentStateDisplayEnd {
+                return "Electricity is less clean until \(formattedTime(end))."
             }
+            return "Electricity stays less clean for the next 24 hours."
         }
     }
 
     var conciseStatusSentence: String {
         guard !isUnavailable else { return "Renewable forecast unavailable" }
         return "\(conciseLevelText) · \(conciseTimingText.lowercased())"
+    }
+
+    /// Short, decision-oriented copy for the supporting renewable timeline.
+    /// Neutral is intentionally described as a lack of strong signal instead
+    /// of an all-day "average" condition.
+    var outlookSentence: String {
+        guard !isUnavailable, !isStale else { return "Renewable outlook unavailable" }
+
+        if currentState == .high {
+            if let end = currentStateDisplayEnd {
+                return "Cleaner until \(formattedTime(end))"
+            }
+            return "Cleaner period now"
+        }
+        if currentState == .low {
+            if let end = currentStateDisplayEnd {
+                return "Less clean until \(formattedTime(end))"
+            }
+            return "Less-clean period now"
+        }
+
+        guard let next = signalRuns.first(where: {
+            $0.start > timelineStart && $0.state != .average
+        }) else {
+            return "No strong signal soon"
+        }
+        switch next.state {
+        case .high:
+            return "Cleaner from \(formattedTime(next.start))"
+        case .low:
+            return "Less clean from \(formattedTime(next.start))"
+        case .average:
+            return "No strong signal soon"
+        }
     }
 
     var conciseLevelText: String {
@@ -353,8 +519,8 @@ struct GridForecastPresentation: Hashable, Sendable {
 
         switch currentState {
         case .high:
-            if let nextRun {
-                return "Until \(formattedTime(nextRun.start))"
+            if let end = currentStateDisplayEnd {
+                return "Until \(formattedTime(end))"
             }
             return "Next 24 hours"
         case .average:
@@ -363,8 +529,8 @@ struct GridForecastPresentation: Hashable, Sendable {
             }
             return "Next 24 hours"
         case .low:
-            if let nextRun {
-                return "Improves from \(formattedTime(nextRun.start))"
+            if let end = currentStateDisplayEnd {
+                return "Improves from \(formattedTime(end))"
             }
             return "Next 24 hours"
         }
@@ -374,8 +540,14 @@ struct GridForecastPresentation: Hashable, Sendable {
         signalRuns.dropFirst().first
     }
 
+    private var currentStateDisplayEnd: Date? {
+        guard let stateEndsAt else { return nil }
+        let hasFullDayCoverage = timelineEnd.timeIntervalSince(timelineStart) >= 24 * 60 * 60 - 1
+        return stateEndsAt < timelineEnd || !hasFullDayCoverage ? stateEndsAt : nil
+    }
+
     private func formattedTime(_ date: Date) -> String {
-        date.formatted(.dateTime.hour().minute())
+        FinlandTime.clock(date)
     }
 
     var accessibilitySummary: String {
@@ -437,6 +609,16 @@ struct GridForecastAPIClient {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let envelope = try decoder.decode(GridSignalEnvelope.self, from: data)
+        guard
+            envelope.schemaVersion == "2.0",
+            envelope.endpoint == "signal",
+            envelope.country?.lowercased() == "fi",
+            envelope.timezone == "Europe/Helsinki",
+            envelope.resolution == "PT15M",
+            envelope.intervalMinutes == 15,
+            !envelope.deprecated
+        else { throw GridForecastAPIError.invalidResponse }
+
         let points = envelope.data.compactMap { datum -> GridForecastPoint? in
             guard let share = datum.values.share else { return nil }
             return GridForecastPoint(
@@ -448,11 +630,17 @@ struct GridForecastAPIClient {
         .sorted { $0.dateTime < $1.dateTime }
 
         guard !points.isEmpty else { throw GridForecastAPIError.noForecast }
+        let slotDuration: TimeInterval = 15 * 60
+        let finalRecordEnd = points.last!.dateTime.addingTimeInterval(slotDuration)
+        let declaredEnd = envelope.availableUntil?.addingTimeInterval(slotDuration)
+        let coverageEnd = max(declaredEnd ?? finalRecordEnd, finalRecordEnd)
         return GridForecastLoadResult(
             points: points,
             fetchedAt: envelope.generatedAt,
-            availableThrough: envelope.availableUntil,
-            isStale: false
+            availableThrough: coverageEnd,
+            // Substituted or metadata-ambiguous forecasts remain visible but
+            // deliberately lose green/red confidence coloring.
+            isStale: envelope.substituteFlag != false
         )
     }
 }
@@ -524,14 +712,44 @@ struct GridForecastCache {
 }
 
 private struct GridSignalEnvelope: Decodable {
+    let schemaVersion: String
+    let endpoint: String
+    let country: String?
+    let timezone: String
+    let resolution: String?
+    let intervalMinutes: Int?
     let generatedAt: Date
+    let availableFrom: Date?
     let availableUntil: Date?
+    let attributes: [String: String]?
+    let deprecated: Bool
     let data: [GridSignalDatum]
 
     enum CodingKeys: String, CodingKey {
+        case schemaVersion = "schema_version"
+        case endpoint
+        case country
+        case timezone
+        case resolution
+        case intervalMinutes = "interval_minutes"
         case generatedAt = "generated_at"
+        case availableFrom = "available_from"
         case availableUntil = "available_until"
+        case attributes
+        case deprecated
         case data
+    }
+
+    var substituteFlag: Bool? {
+        guard let raw = attributes?["substitute"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        else { return nil }
+        return switch raw {
+        case "true": true
+        case "false": false
+        default: nil
+        }
     }
 }
 

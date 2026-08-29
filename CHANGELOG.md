@@ -5,6 +5,9 @@
 ### Fixed
 
 - Installer now unregisters stale parent-app records before refreshing WidgetKit, preventing the widget gallery from falling back to the generic macOS application icon.
+- Grid Conditions no longer lets a current Fingrid reading color future slots; green and red forecast periods now come only from the normalized renewable outlook.
+- The renewable outlook now compares each forecast hour with the same Finland month and local hour in 2023–2025, then requires a matching top/bottom forecast-window quartile for at least one hour.
+- Energy-Charts' final available 15-minute slot is no longer dropped from the renewable timeline.
 
 ## 1.0.1 - 2026-08-28
 

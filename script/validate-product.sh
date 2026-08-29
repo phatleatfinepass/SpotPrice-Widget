@@ -17,7 +17,8 @@ done
 for script_path in \
   "$repo_root/script/install.sh" \
   "$repo_root/script/install-from-source.sh" \
-  "$repo_root/script/package-release.sh"; do
+  "$repo_root/script/package-release.sh" \
+  "$repo_root/script/test-grid-conditions.sh"; do
   bash -n "$script_path" || fail "invalid shell syntax in $script_path"
 done
 

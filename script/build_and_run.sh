@@ -31,6 +31,21 @@ xcodebuild \
   -derivedDataPath "$DERIVED_DATA_DIR" \
   build
 
+if [[ -n "${FINGRID_API_KEY:-}" ]]; then
+  widget_info="$WIDGET_EXTENSION/Contents/Info.plist"
+  if /usr/libexec/PlistBuddy -c 'Print :FingridAPIKey' "$widget_info" >/dev/null 2>&1; then
+    /usr/libexec/PlistBuddy -c "Set :FingridAPIKey $FINGRID_API_KEY" "$widget_info" >/dev/null
+  else
+    /usr/libexec/PlistBuddy -c "Add :FingridAPIKey string $FINGRID_API_KEY" "$widget_info" >/dev/null
+  fi
+  codesign --force --sign - \
+    --entitlements "$ROOT_DIR/SpotPriceWidgetFinland/SpotPriceWidgetFinland.entitlements" \
+    "$WIDGET_EXTENSION" >/dev/null
+  codesign --force --sign - \
+    --entitlements "$ROOT_DIR/SpotPriceWidget/SpotPriceWidget.entitlements" \
+    "$APP_BUNDLE" >/dev/null
+fi
+
 codesign --verify --deep --strict "$APP_BUNDLE"
 
 while IFS= read -r registered_extension; do

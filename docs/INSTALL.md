@@ -56,6 +56,8 @@ Fingrid's grid-emissions API requires registration and an API key. The public re
 
 Developers who enable emissions must keep the credential in macOS Keychain and inject it through a local, unversioned Xcode build configuration. Never add a Fingrid key to source files, project files, shell scripts, screenshots, or commits.
 
+For a local credential-enabled test, the source installer accepts `SPOT_PRICE_CONFIGURATION=Debug` and reads `FINGRID_API_KEY` from the current process only. Release builds always ignore that variable. Load the value from Keychain into the current shell through your private project workflow; do not paste it into a command or save it in an environment file.
+
 ## Build from source
 
 The source installer remains available for contributors and requires the full Xcode app:

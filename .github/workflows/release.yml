@@ -47,6 +47,9 @@ jobs:
       - name: Validate product metadata
         run: script/validate-product.sh
 
+      - name: Test Grid Conditions signal
+        run: script/test-grid-conditions.sh
+
       - name: Build, ad-hoc sign, and package
         env:
           SPOT_PRICE_DISTRIBUTION: direct
