@@ -15,6 +15,7 @@ struct GridConditionsSignalTests {
         testLowRenewableWarningRemainsForecastable()
         testStatusCopyUsesCombinedState()
         testEmissionsFreshnessBoundary()
+        testFreshEmissionsCacheSurvivesTransientRateLimit()
         testMonthHourBaselineUsesHelsinkiTime()
         testRenewableClassifierUsesBothGates()
         testDescendingHighForecastDoesNotFillHorizon()
@@ -265,6 +266,39 @@ struct GridConditionsSignalTests {
                 at: measuredAt.addingTimeInterval(30 * 60)
             ),
             "An emissions reading must become visually stale at its expiry boundary."
+        )
+    }
+
+    private static func testFreshEmissionsCacheSurvivesTransientRateLimit() {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let payload = GridEmissionsCache.Payload(
+            presentationValue: 10.5,
+            presentationBand: .cleaner,
+            measurementStart: now.addingTimeInterval(-30 * 60),
+            measuredAt: now.addingTimeInterval(-15 * 60),
+            lowerThreshold: 15,
+            upperThreshold: 30,
+            distributionFetchedAt: now.addingTimeInterval(-60 * 60),
+            cachedAt: now.addingTimeInterval(-60)
+        )
+
+        expect(
+            GridEmissionsRepository.shouldUseCached(payload, at: now),
+            "A recently cached, current Fingrid measurement should suppress a duplicate API call."
+        )
+        expect(
+            !GridEmissionsRepository.presentation(from: payload, at: now).isStale,
+            "A transient refresh failure must not hide a still-current cached measurement."
+        )
+
+        let expiredDate = now.addingTimeInterval(GridConditionsSignal.emissionsValidity)
+        expect(
+            !GridEmissionsRepository.shouldUseCached(payload, at: expiredDate),
+            "An expired Fingrid measurement must trigger a refresh instead of remaining current."
+        )
+        expect(
+            GridEmissionsRepository.presentation(from: payload, at: expiredDate).isStale,
+            "An expired cached measurement must remain visually unavailable."
         )
     }
 

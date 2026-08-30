@@ -9,6 +9,7 @@
 - The renewable outlook now compares each forecast hour with the same Finland month and local hour in 2023–2025, then requires a matching top/bottom forecast-window quartile for at least one hour.
 - Energy-Charts' final available 15-minute slot is no longer dropped from the renewable timeline.
 - Build 116 forces WidgetKit to replace stale local extension code after the normalized Grid Conditions update.
+- Build 117 coalesces simultaneous Fingrid requests and keeps a current cached CO₂ reading visible when a refresh is rate-limited.
 
 ## 1.0.1 - 2026-08-28
 

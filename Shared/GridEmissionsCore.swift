@@ -77,6 +77,26 @@ struct GridEmissionsLoadResult: Sendable {
     let distributionFetchedAt: Date?
 }
 
+private actor GridEmissionsLoadCoordinator {
+    static let shared = GridEmissionsLoadCoordinator()
+
+    private var inFlight: Task<GridEmissionsPresentation, Never>?
+
+    func load(
+        operation: @escaping @Sendable () async -> GridEmissionsPresentation
+    ) async -> GridEmissionsPresentation {
+        if let inFlight {
+            return await inFlight.value
+        }
+
+        let task = Task { await operation() }
+        inFlight = task
+        let presentation = await task.value
+        inFlight = nil
+        return presentation
+    }
+}
+
 enum GridEmissionsAPIError: LocalizedError {
     case missingAPIKey
     case invalidURL
@@ -238,6 +258,8 @@ struct GridEmissionsRepository {
     private let cache: GridEmissionsCache
     private let now: () -> Date
 
+    private static let refreshInterval: TimeInterval = 10 * 60
+
     init(
         client: GridEmissionsAPIClient = GridEmissionsAPIClient(),
         cache: GridEmissionsCache = GridEmissionsCache(),
@@ -249,8 +271,18 @@ struct GridEmissionsRepository {
     }
 
     func load() async -> GridEmissionsPresentation {
+        await GridEmissionsLoadCoordinator.shared.load {
+            await loadUncoordinated()
+        }
+    }
+
+    private func loadUncoordinated() async -> GridEmissionsPresentation {
         let currentDate = now()
         let cached = cache.load()
+
+        if let cached, Self.shouldUseCached(cached, at: currentDate) {
+            return Self.presentation(from: cached, at: currentDate)
+        }
 
         do {
             let needsDistribution = cached?.distributionFetchedAt
@@ -303,16 +335,40 @@ struct GridEmissionsRepository {
             return presentation
         } catch {
             Self.logger.error("Live emissions load failed: \(error.localizedDescription, privacy: .public)")
-            guard let cached else { return .unavailable() }
-            return GridEmissionsPresentation(
-                gramsCO2PerKWh: cached.presentationValue,
-                band: cached.presentationBand,
-                measurementStart: cached.measurementStart
-                    ?? cached.measuredAt.addingTimeInterval(-15 * 60),
-                measuredAt: cached.measuredAt,
-                isStale: true
-            )
+            // Another WidgetKit request may have completed while this one was
+            // in flight. Reload before declaring the value unavailable.
+            guard let fallback = cache.load() ?? cached else { return .unavailable() }
+            return Self.presentation(from: fallback, at: currentDate)
         }
+    }
+
+    static func shouldUseCached(
+        _ payload: GridEmissionsCache.Payload,
+        at date: Date
+    ) -> Bool {
+        let cacheAge = date.timeIntervalSince(payload.cachedAt)
+        return cacheAge >= 0
+            && cacheAge < refreshInterval
+            && measurementIsCurrent(payload.measuredAt, at: date)
+    }
+
+    static func presentation(
+        from payload: GridEmissionsCache.Payload,
+        at date: Date
+    ) -> GridEmissionsPresentation {
+        GridEmissionsPresentation(
+            gramsCO2PerKWh: payload.presentationValue,
+            band: payload.presentationBand,
+            measurementStart: payload.measurementStart
+                ?? payload.measuredAt.addingTimeInterval(-15 * 60),
+            measuredAt: payload.measuredAt,
+            isStale: !measurementIsCurrent(payload.measuredAt, at: date)
+        )
+    }
+
+    private static func measurementIsCurrent(_ measuredAt: Date, at date: Date) -> Bool {
+        let age = date.timeIntervalSince(measuredAt)
+        return age >= -5 * 60 && age < GridConditionsSignal.emissionsValidity
     }
 
     private static func percentile(_ percentile: Double, in sortedValues: [Double]) -> Double? {
