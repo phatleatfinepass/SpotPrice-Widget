@@ -17,6 +17,7 @@ struct GridConditionsSignalTests {
         testEmissionsFreshnessBoundary()
         testMonthHourBaselineUsesHelsinkiTime()
         testRenewableClassifierUsesBothGates()
+        testDescendingHighForecastDoesNotFillHorizon()
         testFlatWindowSuppressesRelativeColor()
         testProviderWarningSurvivesFlatWindow()
         testPresentationIncludesFinalAvailableSlot()
@@ -361,6 +362,28 @@ struct GridConditionsSignalTests {
                 runLength = 1
             }
         }
+    }
+
+    private static func testDescendingHighForecastDoesNotFillHorizon() {
+        let start = helsinkiDate(month: 8, day: 29, hour: 6)
+        let pointCount = 73
+        let shares = (0..<pointCount).map { index in
+            84.2 - (33.2 * Double(index) / Double(pointCount - 1))
+        }
+        let points = forecastPoints(startingAt: start, shares: shares)
+        expect(
+            points.allSatisfy { point in
+                point.renewableShare! > FinlandRenewableSignal.thresholds(at: point.dateTime).upper
+            },
+            "The live-like descending fixture must remain above every historical upper band."
+        )
+
+        let classified = FinlandRenewableSignal.classify(points: points)
+        expect(classified.first?.state == .high, "The strongest opening values should form a green run.")
+        expect(
+            classified.dropLast(3).contains { $0.state == .average },
+            "The relative-window gate must end green before the forecast horizon."
+        )
     }
 
     private static func testFlatWindowSuppressesRelativeColor() {

@@ -68,6 +68,8 @@ curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPrice-Widget/m
 
 Source builds are local development artifacts. The packaged direct release adds a Universal build, fixed product naming, disk-image layout, integrity checks, and release documentation.
 
+Always update a local Debug installation with the complete `.app` bundle. Do not replace only the launcher in `Contents/MacOS`: Xcode Debug builds keep the Swift implementation in companion `.debug.dylib` files. A partial replacement can leave old widget logic active or cause `dyld` to reject mismatched signatures. The source installer copies and signs the complete bundle.
+
 ## Remove the app
 
 Quit the host app, then move `Finland Electricity Rates.app` from Applications to the Trash. Timestamped backups beside the installation can also be moved to the Trash after confirming the current installation works.

@@ -8,6 +8,7 @@
 - Grid Conditions no longer lets a current Fingrid reading color future slots; green and red forecast periods now come only from the normalized renewable outlook.
 - The renewable outlook now compares each forecast hour with the same Finland month and local hour in 2023–2025, then requires a matching top/bottom forecast-window quartile for at least one hour.
 - Energy-Charts' final available 15-minute slot is no longer dropped from the renewable timeline.
+- Build 116 forces WidgetKit to replace stale local extension code after the normalized Grid Conditions update.
 
 ## 1.0.1 - 2026-08-28
 
