@@ -63,7 +63,7 @@ For a local credential-enabled test, the source installer accepts `SPOT_PRICE_CO
 The source installer remains available for contributors and requires the full Xcode app:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPrice-Widget/stable/script/install-from-source.sh | bash
+curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPrice-Widget/maintenance/script/install-from-source.sh | bash
 ```
 
 Source builds are local development artifacts. The packaged direct release adds a Universal build, fixed product naming, disk-image layout, integrity checks, and release documentation.

@@ -25,6 +25,18 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Require tagged releases from stable
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          git fetch --no-tags origin stable
+          stable_sha="$(git rev-parse FETCH_HEAD)"
+          if [[ "$GITHUB_SHA" != "$stable_sha" ]]; then
+            echo "Release tags must point to the current stable commit." >&2
+            echo "tag=$GITHUB_SHA stable=$stable_sha" >&2
+            exit 1
+          fi
+
       - name: Select release version
         shell: bash
         run: |

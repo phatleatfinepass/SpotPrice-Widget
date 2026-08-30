@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repository="${SPOT_PRICE_REPOSITORY:-phatleatfinepass/SpotPrice-Widget}"
-ref="${SPOT_PRICE_REF:-stable}"
+ref="${SPOT_PRICE_REF:-maintenance}"
 install_dir="${SPOT_PRICE_INSTALL_DIR:-${HOME}/Applications}"
 source_override="${SPOT_PRICE_SOURCE_DIR:-}"
 configuration="${SPOT_PRICE_CONFIGURATION:-Release}"
