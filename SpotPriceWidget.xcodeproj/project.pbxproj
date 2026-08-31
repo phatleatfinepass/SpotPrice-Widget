@@ -385,7 +385,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 117;
+				CURRENT_PROJECT_VERSION = 118;
 				DEVELOPMENT_TEAM = NWP7L2BJP5;
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
 				ENABLE_APP_SANDBOX = YES;
@@ -406,7 +406,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = personal.SpotPriceWidget;
 				PRODUCT_NAME = "Finland Electricity Rates";
 				REGISTER_APP_GROUPS = YES;
@@ -430,7 +430,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = SpotPriceWidget/SpotPriceWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 117;
+				CURRENT_PROJECT_VERSION = 118;
 				DEVELOPMENT_TEAM = NWP7L2BJP5;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -450,7 +450,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = personal.SpotPriceWidget;
 				PRODUCT_NAME = "Finland Electricity Rates";
 				REGISTER_APP_GROUPS = YES;
@@ -475,12 +475,13 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
-				CURRENT_PROJECT_VERSION = 117;
+				CURRENT_PROJECT_VERSION = 118;
 				DEVELOPMENT_TEAM = NWP7L2BJP5;
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				GRID_EMISSIONS_RELAY_URL = "https://finland-grid-emissions-relay.phat-le.workers.dev/v1/finland/emissions/current";
 				INFOPLIST_FILE = SpotPriceWidgetFinland/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Finland Electricity Rates";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
@@ -492,7 +493,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = personal.SpotPriceWidget.SpotPriceWidgetFinland;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -514,11 +515,12 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = SpotPriceWidgetFinland/SpotPriceWidgetFinland.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 117;
+				CURRENT_PROJECT_VERSION = 118;
 				DEVELOPMENT_TEAM = NWP7L2BJP5;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				GRID_EMISSIONS_RELAY_URL = "https://finland-grid-emissions-relay.phat-le.workers.dev/v1/finland/emissions/current";
 				INFOPLIST_FILE = SpotPriceWidgetFinland/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Finland Electricity Rates";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
@@ -530,7 +532,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = personal.SpotPriceWidget.SpotPriceWidgetFinland;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

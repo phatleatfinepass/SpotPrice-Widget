@@ -50,13 +50,15 @@ curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPrice-Widget/s
 
 If the gallery was already open, close and reopen it after the app launches.
 
-## Fingrid emissions
+## Grid-emissions data
 
-Fingrid's grid-emissions API requires registration and an API key. The public release does not embed a shared credential. When emissions are unavailable, the independent, keyless renewable forecast continues to work.
+The public release receives live Fingrid dataset 396 data from the project’s read-only cache. Installation requires no API key. The upstream credential is stored as an encrypted server-side secret and is not present in the app or installer. During a short Fingrid outage the service preserves the last valid response and marks it stale; the independent renewable forecast continues to work.
 
-Developers who enable emissions must keep the credential in macOS Keychain and inject it through a local, unversioned Xcode build configuration. Never add a Fingrid key to source files, project files, shell scripts, screenshots, or commits.
+Developers who test Fingrid directly must keep the credential in macOS Keychain and inject it only into a local Debug bundle. Never add a Fingrid key to source files, project files, shell scripts, screenshots, or commits.
 
-For a local credential-enabled test, the source installer accepts `SPOT_PRICE_CONFIGURATION=Debug` and reads `FINGRID_API_KEY` from the current process only. Release builds always ignore that variable. Load the value from Keychain into the current shell through your private project workflow; do not paste it into a command or save it in an environment file.
+For a local direct-provider test, the source installer accepts `SPOT_PRICE_CONFIGURATION=Debug` and captures `FINGRID_API_KEY` from its initial process only. It removes the variable before downloading or building source, then injects the value after the build without placing it in a command argument. Release builds always ignore it and use the public relay. Load the value from Keychain through your private project workflow; do not paste it into a command or save it in an environment file.
+
+The resulting Debug widget plist contains that credential in plaintext. Do not distribute or back it up. Replace it with a Release installation—or move the entire Debug app to the Trash—as soon as direct-provider testing is complete. The source installer keeps any credential-bearing rollback copy only in its temporary working directory and removes it after a successful replacement.
 
 ## Build from source
 

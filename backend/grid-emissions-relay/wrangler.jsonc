@@ -1,0 +1,26 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "finland-grid-emissions-relay",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-31",
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": {
+    "enabled": false
+  },
+  "kv_namespaces": [
+    {
+      "binding": "GRID_CACHE",
+      "id": "d79b909b173849ceb3e28050abdea0c0"
+    }
+  ],
+  "secrets": {
+    "required": [
+      "FINGRID_API_KEY_PRIMARY",
+      "FINGRID_API_KEY_SECONDARY"
+    ]
+  },
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  }
+}

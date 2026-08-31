@@ -7,7 +7,7 @@
 3. Close and reopen the widget gallery after installing an update.
 4. Remove and add the affected widget again if WidgetKit is showing an old snapshot.
 
-Grid-emissions data requires access to Fingrid's registered API. If that optional source is unavailable, the renewable forecast remains independent and should continue to update.
+Grid-emissions data normally arrives through the project’s public read-only cache and requires no customer API key. If the cache is temporarily stale or unavailable, the renewable forecast remains independent and should continue to update.
 
 ## macOS blocks the first launch
 

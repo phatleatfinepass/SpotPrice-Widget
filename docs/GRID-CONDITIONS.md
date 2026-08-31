@@ -2,7 +2,7 @@
 
 Grid Conditions deliberately presents two related but different views of Finland's electricity system:
 
-- **Grid emissions** is the latest measured Fingrid value in gCO₂/kWh. It is the primary, live metric.
+- **Grid emissions** is the latest measured Fingrid value in gCO₂/kWh. It is the primary, live metric. Public builds obtain the normalized value from the project’s scheduled, read-only relay; no customer credential is required.
 - **Renewable outlook** is a keyless Energy-Charts forecast. It is the supporting timeline and never extrapolates the current emissions reading into the future.
 
 ## Renewable normalization
@@ -26,6 +26,8 @@ The embedded matrix uses the three latest complete years available during the 20
 If a cell is unavailable, classification falls back to its calendar month, then its meteorological season. The embedded baseline should be rebuilt once per year from completed years only.
 
 Source field: Energy-Charts `renewable_share_of_load`. Original Finland electricity data is attributed by Energy-Charts to ENTSO-E.
+
+The emissions band uses the 33rd and 67th percentiles of the latest 30-day Fingrid distribution. The relay recalculates that baseline daily, refreshes the current measurement every five minutes, and keeps a flat distribution neutral rather than labeling the whole day cleaner or higher.
 
 ## Visual semantics
 

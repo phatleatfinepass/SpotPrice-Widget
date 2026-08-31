@@ -15,6 +15,7 @@ Run both builds with the full Xcode app:
 ```bash
 script/test-grid-conditions.sh
 script/validate-product.sh
+(cd backend/grid-emissions-relay && npm ci --ignore-scripts && npm run check)
 
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   xcodebuild -quiet \
@@ -37,4 +38,4 @@ Release packaging is documented in [docs/RELEASE.md](docs/RELEASE.md). The appro
 
 ## Credentials and private data
 
-Never commit API keys, passwords, tokens, personal data, `.env` files, local Xcode configurations, or screenshots containing credentials. Fingrid credentials belong in macOS Keychain and must enter builds only through local, unversioned configuration.
+Never commit API keys, passwords, tokens, personal data, `.env`/`.dev.vars` files, local Xcode configurations, or screenshots containing credentials. Production Fingrid credentials are encrypted Cloudflare Worker secrets. A contributor’s direct-provider credential belongs in macOS Keychain and may enter only a local Debug bundle through the source installer’s process-local injection path. That Debug bundle contains the key in plaintext and must never be distributed or retained after testing.

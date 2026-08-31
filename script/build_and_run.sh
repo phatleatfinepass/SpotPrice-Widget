@@ -19,6 +19,25 @@ LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchS
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 
+fingrid_api_key="${FINGRID_API_KEY:-}"
+unset FINGRID_API_KEY
+
+inject_fingrid_api_key() {
+  local plist_path="$1"
+  local key="$2"
+  local operation="Add"
+
+  [[ "$key" =~ ^[A-Za-z0-9._-]{16,256}$ ]] || {
+    printf 'FINGRID_API_KEY has an unexpected format; refusing to inject it.\n' >&2
+    exit 1
+  }
+  if /usr/libexec/PlistBuddy -c 'Print :FingridAPIKey' "$plist_path" >/dev/null 2>&1; then
+    operation="Set"
+  fi
+  printf '%s :FingridAPIKey %s\nSave\nExit\n' "$operation" "$key" \
+    | /usr/libexec/PlistBuddy "$plist_path" >/dev/null
+}
+
 pkill -x "$APP_PROCESS" >/dev/null 2>&1 || true
 pkill -x "$WIDGET_PROCESS" >/dev/null 2>&1 || true
 
@@ -31,13 +50,10 @@ xcodebuild \
   -derivedDataPath "$DERIVED_DATA_DIR" \
   build
 
-if [[ -n "${FINGRID_API_KEY:-}" ]]; then
+if [[ -n "$fingrid_api_key" ]]; then
   widget_info="$WIDGET_EXTENSION/Contents/Info.plist"
-  if /usr/libexec/PlistBuddy -c 'Print :FingridAPIKey' "$widget_info" >/dev/null 2>&1; then
-    /usr/libexec/PlistBuddy -c "Set :FingridAPIKey $FINGRID_API_KEY" "$widget_info" >/dev/null
-  else
-    /usr/libexec/PlistBuddy -c "Add :FingridAPIKey string $FINGRID_API_KEY" "$widget_info" >/dev/null
-  fi
+  inject_fingrid_api_key "$widget_info" "$fingrid_api_key"
+  unset fingrid_api_key
   codesign --force --sign - \
     --entitlements "$ROOT_DIR/SpotPriceWidgetFinland/SpotPriceWidgetFinland.entitlements" \
     "$WIDGET_EXTENSION" >/dev/null
@@ -45,6 +61,7 @@ if [[ -n "${FINGRID_API_KEY:-}" ]]; then
     --entitlements "$ROOT_DIR/SpotPriceWidget/SpotPriceWidget.entitlements" \
     "$APP_BUNDLE" >/dev/null
 fi
+unset fingrid_api_key
 
 codesign --verify --deep --strict "$APP_BUNDLE"
 

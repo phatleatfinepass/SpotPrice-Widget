@@ -18,7 +18,8 @@ for script_path in \
   "$repo_root/script/install.sh" \
   "$repo_root/script/install-from-source.sh" \
   "$repo_root/script/package-release.sh" \
-  "$repo_root/script/test-grid-conditions.sh"; do
+  "$repo_root/script/test-grid-conditions.sh" \
+  "$repo_root/script/verify-grid-emissions-relay.sh"; do
   bash -n "$script_path" || fail "invalid shell syntax in $script_path"
 done
 
@@ -40,7 +41,10 @@ for required_path in \
   "$repo_root/CHANGELOG.md" \
   "$repo_root/docs/RELEASE.md" \
   "$repo_root/docs/DIRECT-DISTRIBUTION.txt" \
-  "$repo_root/docs/RELEASE-NOTES.md"; do
+  "$repo_root/docs/RELEASE-NOTES.md" \
+  "$repo_root/backend/grid-emissions-relay/package-lock.json" \
+  "$repo_root/backend/grid-emissions-relay/src/index.ts" \
+  "$repo_root/backend/grid-emissions-relay/wrangler.jsonc"; do
   [[ -f "$required_path" ]] || fail "missing required product file: $required_path"
 done
 
@@ -54,6 +58,14 @@ if git -C "$repo_root" grep -En \
   >/dev/null; then
   fail "a credential-shaped Fingrid value appears in the repository"
 fi
+
+grep -Fq '<key>GridEmissionsRelayURL</key>' \
+  "$repo_root/SpotPriceWidgetFinland/Info.plist" \
+  || fail "the widget extension must declare its public emissions relay"
+grep -Fq '.dev.vars' "$repo_root/.gitignore" \
+  || fail "local Worker secret files must be ignored"
+grep -Fq 'node_modules/' "$repo_root/.gitignore" \
+  || fail "Worker dependencies must not be committed"
 
 grep -Fq 'distribution="${SPOT_PRICE_DISTRIBUTION:-direct}"' \
   "$repo_root/script/package-release.sh" \

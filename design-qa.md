@@ -37,7 +37,7 @@ No actionable P0, P1, or P2 differences remain.
 
 - The source is a conceptual square mock with more whitespace than a real small WidgetKit family. The implementation uses a denser but still ordered layout to retain readable type at 158 pt.
 - The operating system supplies the final Home Screen/Desktop background material, mask, shadow, and surrounding wallpaper; the code-rendered comparison captures the widget content and mask only.
-- Live Fingrid emissions require a locally supplied `FINGRID_API_KEY`; without it the implemented unavailable state is shown instead of sample data.
+- Public Release builds obtain live Fingrid emissions from the fixed project relay without a customer key. A local key is optional and restricted to direct-provider Debug testing.
 
 ## Comparison history
 

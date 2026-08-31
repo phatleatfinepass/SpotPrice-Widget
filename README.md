@@ -41,13 +41,13 @@ After installation, open the macOS widget gallery and search for **Finland Elect
 
 ## Data and privacy
 
-The app contacts these data providers directly; it has no project-owned server or analytics service:
+The app uses these data sources and has no account, advertising, or analytics service:
 
 - Electricity prices: [spot-hinta.fi](https://spot-hinta.fi/)
 - Renewable forecast signal: [Energy-Charts](https://api.energy-charts.info/)
-- Grid emissions: [Fingrid Open Data](https://data.fingrid.fi/en/)
+- Grid emissions: [Fingrid Open Data](https://data.fingrid.fi/en/), through the project’s read-only cache
 
-Spot prices and the renewable signal are keyless. Fingrid’s emissions endpoint requires a Fingrid API key and therefore shows as unavailable in the public build unless a developer supplies a key locally. No credential is stored in this repository or by the installer.
+Spot prices and the renewable signal are keyless. Fingrid requires a registered API credential, so the public release reads one fixed, cached dataset from a small Cloudflare Worker. The credential is an encrypted Worker secret and is never shipped in the app, installer, repository, or public response. Local Debug builds may still call Fingrid directly when a developer supplies a credential outside the repository.
 
 The conservative renewable classifier and its visual semantics are documented in [Grid Conditions signal](docs/GRID-CONDITIONS.md).
 

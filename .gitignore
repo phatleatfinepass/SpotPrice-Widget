@@ -3,6 +3,7 @@ DerivedData/
 DerivedData-iOS/
 .derivedData*/
 dist/
+node_modules/
 .playwright-cli/
 
 # Xcode user state stays local; shared schemes remain versioned.
@@ -13,4 +14,7 @@ xcuserdata/
 # Never commit local credentials or machine-specific build settings.
 .env
 .env.*
+.dev.vars
+.dev.vars.*
+.wrangler/
 *.xcconfig.local

@@ -16,6 +16,8 @@ struct GridConditionsSignalTests {
         testStatusCopyUsesCombinedState()
         testEmissionsFreshnessBoundary()
         testFreshEmissionsCacheSurvivesTransientRateLimit()
+        testRelayResponseDecoding()
+        testRelayRejectsWrongDataset()
         testMonthHourBaselineUsesHelsinkiTime()
         testRenewableClassifierUsesBothGates()
         testDescendingHighForecastDoesNotFillHorizon()
@@ -279,6 +281,7 @@ struct GridConditionsSignalTests {
             lowerThreshold: 15,
             upperThreshold: 30,
             distributionFetchedAt: now.addingTimeInterval(-60 * 60),
+            wasStaleWhenCached: false,
             cachedAt: now.addingTimeInterval(-60)
         )
 
@@ -299,6 +302,65 @@ struct GridConditionsSignalTests {
         expect(
             GridEmissionsRepository.presentation(from: payload, at: expiredDate).isStale,
             "An expired cached measurement must remain visually unavailable."
+        )
+    }
+
+    private static func testRelayResponseDecoding() {
+        let data = Data("""
+        {
+          "schemaVersion": 1,
+          "datasetId": 396,
+          "value": 14,
+          "unit": "gCO2/kWh",
+          "measurementStart": "2033-05-18T03:18:00.000Z",
+          "measurementEnd": "2033-05-18T03:33:00.000Z",
+          "band": "cleaner",
+          "lowerThreshold": 20,
+          "upperThreshold": 40,
+          "baselineStart": "2033-04-18T03:18:00.000Z",
+          "baselineEnd": "2033-05-18T03:33:00.000Z",
+          "sourceFetchedAt": "2033-05-18T03:34:00.000Z",
+          "stale": false,
+          "source": "Fingrid Open Data",
+          "sourceUrl": "https://data.fingrid.fi/en/datasets/396",
+          "attribution": "Source Fingrid / data.fingrid.fi, license CC BY 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
+        }
+        """.utf8)
+
+        let result = try? GridEmissionsRelayClient.decodeCurrent(from: data)
+        expect(result?.presentation.gramsCO2PerKWh == 14, "The public relay value must decode.")
+        expect(result?.presentation.band == .cleaner, "The public relay band must decode.")
+        expect(result?.presentation.isStale == false, "A fresh relay response must remain fresh.")
+        expect(result?.lowerThreshold == 20, "The relay's baseline threshold must be retained.")
+    }
+
+    private static func testRelayRejectsWrongDataset() {
+        let data = Data("""
+        {
+          "schemaVersion": 1,
+          "datasetId": 1,
+          "value": 14,
+          "unit": "gCO2/kWh",
+          "measurementStart": "2033-05-18T03:18:00Z",
+          "measurementEnd": "2033-05-18T03:33:00Z",
+          "band": "cleaner",
+          "lowerThreshold": 20,
+          "upperThreshold": 40,
+          "baselineStart": "2033-04-18T03:18:00Z",
+          "baselineEnd": "2033-05-18T03:33:00Z",
+          "sourceFetchedAt": "2033-05-18T03:34:00Z",
+          "stale": false,
+          "source": "Fingrid Open Data",
+          "sourceUrl": "https://data.fingrid.fi/en/datasets/396",
+          "attribution": "Source Fingrid / data.fingrid.fi, license CC BY 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
+        }
+        """.utf8)
+
+        expect(
+            (try? GridEmissionsRelayClient.decodeCurrent(from: data)) == nil,
+            "The app must reject a relay response for any other dataset."
         )
     }
 

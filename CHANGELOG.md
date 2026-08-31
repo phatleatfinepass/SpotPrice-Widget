@@ -1,6 +1,19 @@
 # Changelog
 
-## Unreleased
+## 1.1.0 - 2026-08-31
+
+### Added
+
+- Public Release builds now obtain live Fingrid dataset 396 emissions through a fixed, read-only Cloudflare Worker cache; customers no longer need an API key.
+- The relay refreshes every five minutes, retains the last valid response during upstream failures, and recalculates its 30-day emissions thresholds daily.
+
+### Security
+
+- Fingrid primary and secondary credentials are encrypted provider secrets and are never embedded in the app, installer, repository, logs, or public response.
+- Release packaging rejects missing relay configuration, rejects embedded Fingrid credentials, and verifies a live dataset 396 payload before creating the disk image.
+- Credential-bearing provider requests reject redirects, public reads use edge caching before KV, and the health route consumes no metered storage reads.
+- Release packaging runs with read-only GitHub permission and no persisted checkout credential; only the isolated artifact-publishing job receives write permission.
+- Local Debug-key injection removes the credential from build/download subprocess environments and command arguments, and does not retain credential-bearing rollback bundles.
 
 ### Fixed
 
@@ -10,6 +23,8 @@
 - Energy-Charts' final available 15-minute slot is no longer dropped from the renewable timeline.
 - Build 116 forces WidgetKit to replace stale local extension code after the normalized Grid Conditions update.
 - Build 117 coalesces simultaneous Fingrid requests and keeps a current cached CO₂ reading visible when a refresh is rate-limited.
+- Build 118 routes public emissions through the secure relay while preserving direct Fingrid access only for local Debug builds.
+- The relay now decodes Fingrid dataset 396's production one-row-per-period field instead of rejecting valid measurements as unavailable.
 
 ## 1.0.1 - 2026-08-28
 

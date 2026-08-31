@@ -1,6 +1,20 @@
 import Foundation
 import OSLog
 
+private final class GridEmissionsNoRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    static let shared = GridEmissionsNoRedirectDelegate()
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        completionHandler(nil)
+    }
+}
+
 enum GridEmissionsBand: String, Codable, Sendable {
     case cleaner
     case typical
@@ -128,6 +142,10 @@ struct GridEmissionsAPIClient {
         self.apiKey = apiKey
     }
 
+    var hasConfiguredAPIKey: Bool {
+        apiKey?.isEmpty == false
+    }
+
     func fetchMeasurements(from start: Date, through end: Date) async throws -> [GridEmissionsMeasurement] {
         guard let apiKey, !apiKey.isEmpty else { throw GridEmissionsAPIError.missingAPIKey }
 
@@ -151,7 +169,10 @@ struct GridEmissionsAPIClient {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
 
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await session.data(
+            for: request,
+            delegate: GridEmissionsNoRedirectDelegate.shared
+        )
         guard let response = response as? HTTPURLResponse else {
             throw GridEmissionsAPIError.invalidResponse
         }
@@ -164,7 +185,7 @@ struct GridEmissionsAPIClient {
         return measurements.sorted { $0.startTime < $1.startTime }
     }
 
-    private static func configuredAPIKey(bundle: Bundle = .main) -> String? {
+    static func configuredAPIKey(bundle: Bundle = .main) -> String? {
         guard let rawValue = bundle.object(forInfoDictionaryKey: "FingridAPIKey") as? String else {
             return nil
         }
@@ -248,13 +269,164 @@ struct GridEmissionsAPIClient {
     }()
 }
 
+enum GridEmissionsRelayError: LocalizedError {
+    case missingURL
+    case invalidResponse
+    case httpStatus(Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .missingURL: "The grid-emissions relay is not configured."
+        case .invalidResponse: "The grid-emissions relay returned invalid data."
+        case let .httpStatus(status): "The grid-emissions relay returned HTTP \(status)."
+        }
+    }
+}
+
+struct GridEmissionsRelayClient {
+    private static let datasetID = 396
+    private static let unit = "gCO2/kWh"
+    private static let source = "Fingrid Open Data"
+    private static let sourceURL = "https://data.fingrid.fi/en/datasets/396"
+    private static let attribution = "Source Fingrid / data.fingrid.fi, license CC BY 4.0"
+    private static let licenseURL = "https://creativecommons.org/licenses/by/4.0/"
+
+    private let session: URLSession
+    private let endpoint: URL?
+
+    init(
+        session: URLSession = .shared,
+        endpoint: URL? = GridEmissionsRelayClient.configuredURL()
+    ) {
+        self.session = session
+        self.endpoint = endpoint
+    }
+
+    var isConfigured: Bool { endpoint != nil }
+
+    func fetchCurrent() async throws -> GridEmissionsLoadResult {
+        guard let endpoint else { throw GridEmissionsRelayError.missingURL }
+
+        var request = URLRequest(url: endpoint)
+        request.timeoutInterval = 20
+        request.cachePolicy = .reloadRevalidatingCacheData
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let (data, response) = try await session.data(
+            for: request,
+            delegate: GridEmissionsNoRedirectDelegate.shared
+        )
+        guard let response = response as? HTTPURLResponse else {
+            throw GridEmissionsRelayError.invalidResponse
+        }
+        guard (200..<300).contains(response.statusCode) else {
+            throw GridEmissionsRelayError.httpStatus(response.statusCode)
+        }
+        return try Self.decodeCurrent(from: data)
+    }
+
+    static func configuredURL(bundle: Bundle = .main) -> URL? {
+        guard let rawValue = bundle.object(forInfoDictionaryKey: "GridEmissionsRelayURL") as? String else {
+            return nil
+        }
+        let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard
+            !value.isEmpty,
+            !value.hasPrefix("$("),
+            let url = URL(string: value),
+            url.scheme == "https",
+            url.host != nil,
+            url.port == nil,
+            url.user == nil,
+            url.password == nil,
+            url.path == "/v1/finland/emissions/current",
+            url.query == nil,
+            url.fragment == nil
+        else { return nil }
+        return url
+    }
+
+    static func decodeCurrent(from data: Data) throws -> GridEmissionsLoadResult {
+        let response: ResponsePayload
+        do {
+            response = try JSONDecoder().decode(ResponsePayload.self, from: data)
+        } catch {
+            throw GridEmissionsRelayError.invalidResponse
+        }
+
+        guard
+            response.schemaVersion == 1,
+            response.datasetId == datasetID,
+            response.unit == unit,
+            response.source == source,
+            response.sourceUrl == sourceURL,
+            response.attribution == attribution,
+            response.licenseUrl == licenseURL,
+            response.value.isFinite,
+            (0...10_000).contains(response.value),
+            response.lowerThreshold.isFinite,
+            response.upperThreshold.isFinite,
+            response.lowerThreshold <= response.upperThreshold,
+            let measurementStart = parseDate(response.measurementStart),
+            let measurementEnd = parseDate(response.measurementEnd),
+            measurementStart < measurementEnd,
+            let baselineStart = parseDate(response.baselineStart),
+            let baselineEnd = parseDate(response.baselineEnd),
+            baselineStart < baselineEnd,
+            parseDate(response.sourceFetchedAt) != nil
+        else { throw GridEmissionsRelayError.invalidResponse }
+
+        return GridEmissionsLoadResult(
+            presentation: GridEmissionsPresentation(
+                gramsCO2PerKWh: response.value,
+                band: response.band,
+                measurementStart: measurementStart,
+                measuredAt: measurementEnd,
+                isStale: response.stale
+            ),
+            lowerThreshold: response.lowerThreshold,
+            upperThreshold: response.upperThreshold,
+            distributionFetchedAt: baselineEnd
+        )
+    }
+
+    private static func parseDate(_ value: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: value) { return date }
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: value)
+    }
+
+    private struct ResponsePayload: Decodable {
+        let schemaVersion: Int
+        let datasetId: Int
+        let value: Double
+        let unit: String
+        let measurementStart: String
+        let measurementEnd: String
+        let band: GridEmissionsBand
+        let lowerThreshold: Double
+        let upperThreshold: Double
+        let baselineStart: String
+        let baselineEnd: String
+        let sourceFetchedAt: String
+        let stale: Bool
+        let source: String
+        let sourceUrl: String
+        let attribution: String
+        let licenseUrl: String
+    }
+}
+
 struct GridEmissionsRepository {
     private static let logger = Logger(
         subsystem: "personal.SpotPriceWidget",
         category: "GridEmissions"
     )
 
-    private let client: GridEmissionsAPIClient
+    private let directClient: GridEmissionsAPIClient
+    private let relayClient: GridEmissionsRelayClient
     private let cache: GridEmissionsCache
     private let now: () -> Date
 
@@ -262,10 +434,12 @@ struct GridEmissionsRepository {
 
     init(
         client: GridEmissionsAPIClient = GridEmissionsAPIClient(),
+        relayClient: GridEmissionsRelayClient = GridEmissionsRelayClient(),
         cache: GridEmissionsCache = GridEmissionsCache(),
         now: @escaping () -> Date = Date.init
     ) {
-        self.client = client
+        self.directClient = client
+        self.relayClient = relayClient
         self.cache = cache
         self.now = now
     }
@@ -285,51 +459,21 @@ struct GridEmissionsRepository {
         }
 
         do {
-            let needsDistribution = cached?.distributionFetchedAt
-                .map { currentDate.timeIntervalSince($0) >= 24 * 60 * 60 }
-                ?? true
-            let lookback = needsDistribution ? 30 * 24 * 60 * 60 : 2 * 60 * 60
-            let measurements = try await client.fetchMeasurements(
-                from: currentDate.addingTimeInterval(-Double(lookback)),
-                through: currentDate
-            )
-            guard let latest = measurements.last else { throw GridEmissionsAPIError.noMeasurements }
-
-            let lowerThreshold: Double?
-            let upperThreshold: Double?
-            let distributionFetchedAt: Date?
-
-            if needsDistribution {
-                let values = measurements.map(\.value).sorted()
-                lowerThreshold = Self.percentile(0.33, in: values)
-                upperThreshold = Self.percentile(0.67, in: values)
-                distributionFetchedAt = currentDate
-            } else {
-                lowerThreshold = cached?.lowerThreshold
-                upperThreshold = cached?.upperThreshold
-                distributionFetchedAt = cached?.distributionFetchedAt
-            }
-
-            let band = Self.band(
-                for: latest.value,
-                lowerThreshold: lowerThreshold,
-                upperThreshold: upperThreshold
-            )
-            let presentation = GridEmissionsPresentation(
-                gramsCO2PerKWh: latest.value,
-                band: band,
-                measurementStart: latest.startTime,
-                measuredAt: latest.endTime,
-                isStale: false
-            )
+            let result = try await loadLive(at: currentDate, cached: cached)
+            let presentation = result.presentation
+            guard
+                let value = presentation.gramsCO2PerKWh,
+                let measuredAt = presentation.measuredAt
+            else { throw GridEmissionsRelayError.invalidResponse }
             cache.save(GridEmissionsCache.Payload(
-                presentationValue: latest.value,
-                presentationBand: band,
-                measurementStart: latest.startTime,
-                measuredAt: latest.endTime,
-                lowerThreshold: lowerThreshold,
-                upperThreshold: upperThreshold,
-                distributionFetchedAt: distributionFetchedAt,
+                presentationValue: value,
+                presentationBand: presentation.band,
+                measurementStart: presentation.measurementStart,
+                measuredAt: measuredAt,
+                lowerThreshold: result.lowerThreshold,
+                upperThreshold: result.upperThreshold,
+                distributionFetchedAt: result.distributionFetchedAt,
+                wasStaleWhenCached: presentation.isStale,
                 cachedAt: currentDate
             ))
             return presentation
@@ -342,6 +486,70 @@ struct GridEmissionsRepository {
         }
     }
 
+    private func loadLive(
+        at currentDate: Date,
+        cached: GridEmissionsCache.Payload?
+    ) async throws -> GridEmissionsLoadResult {
+#if DEBUG
+        if directClient.hasConfiguredAPIKey {
+            do {
+                return try await loadDirect(at: currentDate, cached: cached)
+            } catch {
+                guard relayClient.isConfigured else { throw error }
+                return try await relayClient.fetchCurrent()
+            }
+        }
+#endif
+        return try await relayClient.fetchCurrent()
+    }
+
+    private func loadDirect(
+        at currentDate: Date,
+        cached: GridEmissionsCache.Payload?
+    ) async throws -> GridEmissionsLoadResult {
+        let needsDistribution = cached?.distributionFetchedAt
+            .map { currentDate.timeIntervalSince($0) >= 24 * 60 * 60 }
+            ?? true
+        let lookback = needsDistribution ? 30 * 24 * 60 * 60 : 2 * 60 * 60
+        let measurements = try await directClient.fetchMeasurements(
+            from: currentDate.addingTimeInterval(-Double(lookback)),
+            through: currentDate
+        )
+        guard let latest = measurements.last else { throw GridEmissionsAPIError.noMeasurements }
+
+        let lowerThreshold: Double?
+        let upperThreshold: Double?
+        let distributionFetchedAt: Date?
+        if needsDistribution {
+            let values = measurements.map(\.value).sorted()
+            lowerThreshold = Self.percentile(0.33, in: values)
+            upperThreshold = Self.percentile(0.67, in: values)
+            distributionFetchedAt = currentDate
+        } else {
+            lowerThreshold = cached?.lowerThreshold
+            upperThreshold = cached?.upperThreshold
+            distributionFetchedAt = cached?.distributionFetchedAt
+        }
+
+        let band = Self.band(
+            for: latest.value,
+            lowerThreshold: lowerThreshold,
+            upperThreshold: upperThreshold
+        )
+        return GridEmissionsLoadResult(
+            presentation: GridEmissionsPresentation(
+                gramsCO2PerKWh: latest.value,
+                band: band,
+                measurementStart: latest.startTime,
+                measuredAt: latest.endTime,
+                isStale: false
+            ),
+            lowerThreshold: lowerThreshold,
+            upperThreshold: upperThreshold,
+            distributionFetchedAt: distributionFetchedAt
+        )
+    }
+
     static func shouldUseCached(
         _ payload: GridEmissionsCache.Payload,
         at date: Date
@@ -349,6 +557,7 @@ struct GridEmissionsRepository {
         let cacheAge = date.timeIntervalSince(payload.cachedAt)
         return cacheAge >= 0
             && cacheAge < refreshInterval
+            && !(payload.wasStaleWhenCached ?? false)
             && measurementIsCurrent(payload.measuredAt, at: date)
     }
 
@@ -362,7 +571,8 @@ struct GridEmissionsRepository {
             measurementStart: payload.measurementStart
                 ?? payload.measuredAt.addingTimeInterval(-15 * 60),
             measuredAt: payload.measuredAt,
-            isStale: !measurementIsCurrent(payload.measuredAt, at: date)
+            isStale: (payload.wasStaleWhenCached ?? false)
+                || !measurementIsCurrent(payload.measuredAt, at: date)
         )
     }
 
@@ -382,7 +592,11 @@ struct GridEmissionsRepository {
         lowerThreshold: Double?,
         upperThreshold: Double?
     ) -> GridEmissionsBand? {
-        guard let lowerThreshold, let upperThreshold else { return nil }
+        guard
+            let lowerThreshold,
+            let upperThreshold,
+            lowerThreshold < upperThreshold
+        else { return .typical }
         if value <= lowerThreshold { return .cleaner }
         if value >= upperThreshold { return .higher }
         return .typical
@@ -391,7 +605,7 @@ struct GridEmissionsRepository {
 
 struct GridEmissionsCache {
     private let defaults: UserDefaults
-    private let key = "finland-grid-emissions-cache-v1"
+    private let key = "finland-grid-emissions-cache-v2"
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -420,6 +634,7 @@ struct GridEmissionsCache {
         let lowerThreshold: Double?
         let upperThreshold: Double?
         let distributionFetchedAt: Date?
+        let wasStaleWhenCached: Bool?
         let cachedAt: Date
     }
 }

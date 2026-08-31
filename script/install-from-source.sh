@@ -10,10 +10,26 @@ app_name="Finland Electricity Rates"
 app_bundle_id="personal.SpotPriceWidget"
 widget_bundle_id="personal.SpotPriceWidget.SpotPriceWidgetFinland"
 lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+fingrid_api_key="${FINGRID_API_KEY:-}"
+unset FINGRID_API_KEY
 
 fail() {
   printf 'SpotPriceWidget source installer: %s\n' "$1" >&2
   exit 1
+}
+
+inject_fingrid_api_key() {
+  local plist_path="$1"
+  local key="$2"
+  local operation="Add"
+
+  [[ "$key" =~ ^[A-Za-z0-9._-]{16,256}$ ]] \
+    || fail "FINGRID_API_KEY has an unexpected format; refusing to inject it"
+  if /usr/libexec/PlistBuddy -c 'Print :FingridAPIKey' "$plist_path" >/dev/null 2>&1; then
+    operation="Set"
+  fi
+  printf '%s :FingridAPIKey %s\nSave\nExit\n' "$operation" "$key" \
+    | /usr/libexec/PlistBuddy "$plist_path" >/dev/null
 }
 
 registered_app_paths() {
@@ -118,16 +134,13 @@ built_extension="$built_app/Contents/PlugIns/SpotPriceWidgetFinlandExtension.app
 [[ -d "$built_app" && -d "$built_extension" ]] \
   || fail "build completed without the expected app and widget extension"
 
-if [[ "$configuration" == "Debug" && -n "${FINGRID_API_KEY:-}" ]]; then
+if [[ "$configuration" == "Debug" && -n "$fingrid_api_key" ]]; then
   # Inject only after Xcode finishes so the credential never enters build
   # settings or logs. The bundle is signed immediately afterwards.
   widget_info="$built_extension/Contents/Info.plist"
-  if /usr/libexec/PlistBuddy -c 'Print :FingridAPIKey' "$widget_info" >/dev/null 2>&1; then
-    /usr/libexec/PlistBuddy -c "Set :FingridAPIKey $FINGRID_API_KEY" "$widget_info" >/dev/null
-  else
-    /usr/libexec/PlistBuddy -c "Add :FingridAPIKey string $FINGRID_API_KEY" "$widget_info" >/dev/null
-  fi
+  inject_fingrid_api_key "$widget_info" "$fingrid_api_key"
 fi
+unset fingrid_api_key
 
 codesign --force --sign - \
   --entitlements "$source_root/SpotPriceWidgetFinland/SpotPriceWidgetFinland.entitlements" \
@@ -141,7 +154,15 @@ mkdir -p "$install_dir"
 target_app="$install_dir/${app_name}.app"
 backup_app=""
 if [[ -e "$target_app" ]]; then
-  backup_app="$install_dir/${app_name}.app.backup-$(date +%Y%m%d-%H%M%S)-$$"
+  existing_widget_info="$target_app/Contents/PlugIns/SpotPriceWidgetFinlandExtension.appex/Contents/Info.plist"
+  existing_fingrid_key="$(plutil -extract FingridAPIKey raw "$existing_widget_info" 2>/dev/null || true)"
+  if [[ -n "$existing_fingrid_key" && "$existing_fingrid_key" != '$(FINGRID_API_KEY)' ]]; then
+    # A developer credential must not survive as a persistent app backup.
+    backup_app="$work_dir/previous-install.app"
+  else
+    backup_app="$install_dir/${app_name}.app.backup-$(date +%Y%m%d-%H%M%S)-$$"
+  fi
+  unset existing_fingrid_key
   mv "$target_app" "$backup_app"
 fi
 
@@ -172,7 +193,7 @@ pkill -x NotificationCenter >/dev/null 2>&1 || true
 pkill -x chronod >/dev/null 2>&1 || true
 
 printf 'Installed development build at %s\n' "$target_app"
-if [[ -n "$backup_app" ]]; then
+if [[ -n "$backup_app" && "$backup_app" != "$work_dir/previous-install.app" ]]; then
   printf 'Previous installation backed up at %s\n' "$backup_app"
 fi
 printf 'Widget bundle registered as %s\n' "$widget_bundle_id"

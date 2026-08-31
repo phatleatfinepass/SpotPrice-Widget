@@ -18,7 +18,10 @@ The checksum and disk image live in the same GitHub release, so they do not prot
 - A semantic version matching `MARKETING_VERSION`
 - Xcode with the macOS SDK needed by the project
 - No embedded Fingrid credential
+- A deployed, healthy HTTPS grid-emissions relay configured in the Release build
+- Passing relay type checks and tests from the locked npm dependency graph
 - Release validation that depends only on commands present in the macOS runner; any added tool must be installed explicitly in CI
+- A package job with read-only repository permission and no persisted checkout credential; only the artifact-only publish job receives `contents: write`
 
 No signing certificate, Apple membership, notarization password, or release secret is required in direct mode.
 
@@ -31,7 +34,7 @@ SPOT_PRICE_DISTRIBUTION=direct script/package-release.sh
 
 The packaging script builds both `arm64` and `x86_64`, signs the widget extension and app ad hoc with the hardened-runtime option, verifies the resulting signatures, confirms that Developer ID assessment is rejected as expected, creates `dist/Finland-Electricity-Rates.dmg`, signs the disk image ad hoc, and writes its SHA-256 checksum.
 
-Mount the disk image and verify the app, both architectures, product version, privacy manifests, absence of credentials, and the included first-launch notice before publishing.
+The packaging script also calls the exact embedded relay endpoint and requires a valid dataset 396 payload. Mount the disk image and verify the app, both architectures, product version, privacy manifests, absence of credentials, and the included first-launch notice before publishing.
 
 ## Publish
 

@@ -69,6 +69,7 @@ built_app="$derived_data/Build/Products/Release/Finland Electricity Rates.app"
 built_extension="$built_app/Contents/PlugIns/SpotPriceWidgetFinlandExtension.appex"
 staged_extension="$staged_app/Contents/PlugIns/SpotPriceWidgetFinlandExtension.appex"
 artifact_name="Finland-Electricity-Rates.dmg"
+approved_relay_url="https://finland-grid-emissions-relay.phat-le.workers.dev/v1/finland/emissions/current"
 
 printf 'Building Finland Electricity Rates %s for macOS…\n' "$version"
 xcodebuild -quiet \
@@ -95,6 +96,11 @@ xcodebuild -quiet \
 embedded_fingrid_key="$(plutil -extract FingridAPIKey raw "$built_extension/Contents/Info.plist" 2>/dev/null || true)"
 [[ -z "$embedded_fingrid_key" || "$embedded_fingrid_key" == '$(FINGRID_API_KEY)' ]] \
   || fail "release build contains a Fingrid API credential"
+
+grid_emissions_relay_url="$(plutil -extract GridEmissionsRelayURL raw "$built_extension/Contents/Info.plist" 2>/dev/null || true)"
+[[ "$grid_emissions_relay_url" == "$approved_relay_url" ]] \
+  || fail "release build does not contain the exact approved grid-emissions relay URL"
+"$repo_root/script/verify-grid-emissions-relay.sh" "$grid_emissions_relay_url"
 
 mkdir -p "$stage_dir"
 ditto "$built_app" "$staged_app"
