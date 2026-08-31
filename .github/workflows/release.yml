@@ -123,6 +123,7 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             dist/Finland-Electricity-Rates.dmg \
             dist/Finland-Electricity-Rates.dmg.sha256 \
+            --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
             --title "Finland Electricity Rates ${{ needs.package.outputs.version }}" \
             --notes-file dist/RELEASE-NOTES.md

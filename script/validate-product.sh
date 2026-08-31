@@ -73,6 +73,9 @@ grep -Fq 'distribution="${SPOT_PRICE_DISTRIBUTION:-direct}"' \
 grep -Eq 'SPOT_PRICE_DISTRIBUTION: direct' \
   "$repo_root/.github/workflows/release.yml" \
   || fail "the public release workflow must explicitly select direct distribution"
+grep -Fq -- '--repo "$GITHUB_REPOSITORY"' \
+  "$repo_root/.github/workflows/release.yml" \
+  || fail "the checkout-free publisher must name its GitHub repository explicitly"
 
 for installer_path in \
   "$repo_root/script/install.sh" \
