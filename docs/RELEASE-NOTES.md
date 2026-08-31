@@ -1,13 +1,15 @@
-# Finland Electricity Rates 1.2.3
+# Finland Electricity Rates 1.2.4
 
-Version 1.2.3 is the first signed release intended to exercise the transactional in-app updater included in version 1.2.2. From the app, choose **Check for Updates**, then **Install Update…**. The app downloads the disk image and detached Ed25519 signature from the fixed official GitHub repository and verifies that project signature before installation begins.
+Version 1.2.4 introduces the full native macOS dashboard while preserving the glanceable Electricity Rates and Grid Conditions widgets.
 
-The maintenance service independently verifies the signature, exact bundle identifier, newer semantic version, and complete nested code-signature tree. Version 1.2.3 is fully staged before the installed copy is moved aside. Version 1.2.2 remains available as a hidden rollback until 1.2.3 launches and stays open; a failed launch restores 1.2.2.
+The app now opens with a live overview of the current VAT-inclusive spot price and Fingrid emissions value, a proportional daily price-range gauge, and the best upcoming window that balances low price with renewable availability. The Electricity Prices card provides a working Today/Tomorrow selector, fully rounded hourly bars, negative-price support, and visible daily extrema. The hourly table adds renewable share and a concise recommendation for each available hour.
 
-The updater never executes a downloaded shell script, disables Gatekeeper, removes quarantine, or accepts an arbitrary app or destination from the update request. Installations on 1.2.1 or earlier must install the 1.2.2 bridge manually before attempting this automatic upgrade.
+Grid Conditions now presents two distinct Apple Charts views instead of combining unrelated units on one normalized plot. **Forecast** shows renewable share for the next 24 hours as a percentage area-and-line chart. **History** shows measured grid emissions for the past 24 hours as gCO₂/kWh bars when direct historical data is available. Both views keep a fixed footprint so the dashboard does not jump or resize when data or selection changes.
 
-There are no widget-design or data-source changes in this release. Electricity Rates, Grid Conditions, the public keyless Fingrid relay, reset, and uninstall behavior remain unchanged so the update test is isolated from product behavior.
+The host app also resolves the public grid-emissions relay bundled with the widget, so the current Fingrid value remains available without exposing an API credential. Release builds do not fabricate emissions history when only the current public measurement is available.
 
-The release supports macOS 26.5 or later on Apple silicon and Intel Macs. It is a free direct release: the bundles are ad-hoc signed for integrity but are not Apple-notarized and do not carry a paid Developer ID identity. First installation can still require **System Settings → Privacy & Security → Open Anyway**.
+The signed transactional updater remains unchanged. It verifies the detached Ed25519 signature, exact bundle identifier, newer version, and complete nested code-signature tree before replacing the installed app, with rollback retained until the new process remains alive.
+
+The release supports macOS 26.5 or later on Apple silicon and Intel Macs. It is a free direct release: the bundles are ad-hoc signed for integrity but are not Apple-notarized and do not carry a paid Developer ID identity. A first installation can still require **System Settings → Privacy & Security → Open Anyway**.
 
 The release contains the disk image, its SHA-256 checksum, and the detached project update signature.

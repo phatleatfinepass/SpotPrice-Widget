@@ -13,7 +13,7 @@ The current response is cached at Cloudflare's edge before KV is read. The sched
 
 `FINGRID_API_KEY_PRIMARY` and `FINGRID_API_KEY_SECONDARY` are required encrypted Worker secrets. The secondary subscription key is used only when the primary is rejected with `401` or `403`; it is never used to bypass a `429` rate limit.
 
-The KV namespace ID in `wrangler.jsonc` is a non-secret binding to the project’s production cache. Never put credentials in `wrangler.jsonc`, `.dev.vars`, shell command arguments, documentation, or Git.
+The KV namespace ID in the checked-in Wrangler configuration is a non-secret binding to the project’s production cache. Never put credentials in that file, `.dev.vars`, shell command arguments, documentation, or Git.
 
 For local verification:
 

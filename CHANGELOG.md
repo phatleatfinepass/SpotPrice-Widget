@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.2.4 - 2026-09-01
+
+### Added
+
+- Added a full native dashboard to the macOS app with live price and emissions summaries, a proportional daily price-range gauge, Today/Tomorrow prices, hourly recommendations, source timestamps, and a combined best-use window.
+- Added Apple Charts views for hourly electricity prices, the next 24 hours of renewable share, and the past 24 hours of grid-emissions history when direct historical data is available.
+
+### Changed
+
+- Reworked Grid Conditions into two clearly labeled, fixed-size Forecast and History views instead of overlaying unrelated units on one normalized chart.
+- Normalized the two analytical cards, segmented controls, chart plot padding, and axis-label widths so loading, selection, and data changes no longer resize the dashboard.
+- The host app now resolves the public grid-emissions relay from its bundled widget extension, keeping the live Fingrid value available in the app as well as the widget.
+
+### Fixed
+
+- Today and Tomorrow no longer substitute for one another; unpublished tomorrow prices show an honest publication-time state.
+- Price bars retain fully rounded tops, negative-price headroom, unobstructed trailing axis labels, and numeric minimum/maximum annotations.
+- Local Debug builds inject an optional Fingrid key into both the host and widget bundles without changing the credential-free public Release path.
+
+### Verified
+
+- Product metadata, Grid Conditions logic, maintenance safeguards, updater trust, uninstaller target resolution, macOS build verification, and the signed public release pipeline all cover this release.
+
 ## 1.2.3 - 2026-08-31
 
 ### Changed

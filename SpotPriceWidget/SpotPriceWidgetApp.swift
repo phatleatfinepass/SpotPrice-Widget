@@ -16,6 +16,8 @@ struct SpotPriceWidgetApp: App {
 #endif
         }
 #if os(macOS)
+        .defaultSize(width: 1440, height: 960)
+        .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(after: .appInfo) {
                 Button("Check for Updates…") {

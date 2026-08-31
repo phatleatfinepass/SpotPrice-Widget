@@ -186,12 +186,25 @@ struct GridEmissionsAPIClient {
     }
 
     static func configuredAPIKey(bundle: Bundle = .main) -> String? {
-        guard let rawValue = bundle.object(forInfoDictionaryKey: "FingridAPIKey") as? String else {
+        guard let rawValue = configuredString(forKey: "FingridAPIKey", bundle: bundle) else {
             return nil
         }
         let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty, !value.hasPrefix("$(") else { return nil }
         return value
+    }
+
+    private static func configuredString(forKey key: String, bundle: Bundle) -> String? {
+        if let value = bundle.object(forInfoDictionaryKey: key) as? String {
+            return value
+        }
+        guard
+            let plugInsURL = bundle.builtInPlugInsURL,
+            let extensionBundle = Bundle(
+                url: plugInsURL.appendingPathComponent("SpotPriceWidgetFinlandExtension.appex")
+            )
+        else { return nil }
+        return extensionBundle.object(forInfoDictionaryKey: key) as? String
     }
 
     static func decodeMeasurements(from data: Data) throws -> [GridEmissionsMeasurement] {
@@ -326,7 +339,9 @@ struct GridEmissionsRelayClient {
     }
 
     static func configuredURL(bundle: Bundle = .main) -> URL? {
-        guard let rawValue = bundle.object(forInfoDictionaryKey: "GridEmissionsRelayURL") as? String else {
+        let rawValue = (bundle.object(forInfoDictionaryKey: "GridEmissionsRelayURL") as? String)
+            ?? configuredExtensionValue(forKey: "GridEmissionsRelayURL", bundle: bundle)
+        guard let rawValue else {
             return nil
         }
         let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -344,6 +359,16 @@ struct GridEmissionsRelayClient {
             url.fragment == nil
         else { return nil }
         return url
+    }
+
+    private static func configuredExtensionValue(forKey key: String, bundle: Bundle) -> String? {
+        guard
+            let plugInsURL = bundle.builtInPlugInsURL,
+            let extensionBundle = Bundle(
+                url: plugInsURL.appendingPathComponent("SpotPriceWidgetFinlandExtension.appex")
+            )
+        else { return nil }
+        return extensionBundle.object(forInfoDictionaryKey: key) as? String
     }
 
     static func decodeCurrent(from data: Data) throws -> GridEmissionsLoadResult {

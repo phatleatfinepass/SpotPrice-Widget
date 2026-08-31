@@ -51,7 +51,9 @@ xcodebuild \
   build
 
 if [[ -n "$fingrid_api_key" ]]; then
+  app_info="$APP_BUNDLE/Contents/Info.plist"
   widget_info="$WIDGET_EXTENSION/Contents/Info.plist"
+  inject_fingrid_api_key "$app_info" "$fingrid_api_key"
   inject_fingrid_api_key "$widget_info" "$fingrid_api_key"
   unset fingrid_api_key
   codesign --force --sign - \

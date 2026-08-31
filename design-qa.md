@@ -61,6 +61,79 @@ final result: passed
 
 ---
 
+# Master Dashboard — First-Trial Design QA
+
+## Comparison target
+
+- Source visual truth: `/Users/chandler/.codex/generated_images/01a057de-e4ae-7291-a131-57d9ed4e4339/exec-8e13b6ca-6a9a-4062-9d1a-e03e0396575e.png`
+- Initial implementation screenshot: `/private/tmp/spotprice-dashboard.png`
+- Corrected chart screenshot: `/private/tmp/spotprice-dashboard-v2.png`
+- Final implementation screenshot: `/private/tmp/spotprice-dashboard-final-live.png`
+- Revised Today state: `/private/tmp/spotprice-dashboard-toggle-today.png`
+- Revised Tomorrow empty state: `/private/tmp/spotprice-dashboard-toggle-tomorrow-final.png`
+- Reported-versus-fixed comparison: `/private/tmp/spotprice-design-audit-comparison.png`
+- Viewport: native macOS window at 1920 × 1080 points in dark appearance; captured at 2× density.
+- Data state: live spot price and live relay emissions; today selected because tomorrow prices were not published at the capture time; renewable forecast live; emissions history visibly marked as a Debug preview because no local direct-history credential was available.
+
+## Full-view comparison evidence
+
+The first-trial implementation preserves the approved master-screen hierarchy: one unified live status band, two equally weighted analytical cards, a dense native hourly table, and existing product-management sections below. The price card uses 24 fully rounded native `BarMark`s with the fixed green/orange/red bands, a zero baseline, negative-price headroom, and numeric-only extrema. The grid card avoids a dual-axis or normalized overlay: a fixed Forecast/History selector switches between a green renewable-share `AreaMark` plus `LineMark` and cyan emissions `BarMark`s, each with its own unit and raw-value annotation.
+
+The final capture also verifies the app-specific Fingrid relay path. The main app reads the public relay configuration from its bundled widget extension and displays a live 15 gCO₂/kWh measurement rather than the earlier false unavailable state.
+
+## Required fidelity surfaces
+
+- Fonts and typography: Native San Francisco text styles, rounded monospaced numeric values, hierarchical captions, and semantic secondary labels remain readable at the desktop viewport.
+- Spacing and layout rhythm: The dashboard uses a 1420-point content column, 18-point inter-card rhythm, continuous 24-point card corners, and native table density. The analytical cards use matching 520-point minimum widths, fixed 240-point segmented controls, and fixed chart-content heights; they collapse vertically through `ViewThatFits` when the window narrows.
+- Colors and visual tokens: Price alone controls green/orange/red price marks. Emissions history uses cyan bars; renewable forecast uses a green area and line. Grid status uses the live Fingrid band color. Materials, dividers, and axes use system semantic styling.
+- Chart semantics: Raw gCO₂/kWh and renewable percentage never share an axis. Forecast and History expose their own titles, time scope, unit, scale, selection annotation, and unavailable state.
+- Copy and content: Live units, data provenance, update times, price conditions, renewable percentages, recommendations, and the preview-history disclosure remain explicit. Tomorrow remains selectable before publication and shows a time-specific empty state instead of Today’s data.
+- Data integrity: Live headline emissions come from the keyless relay. Debug-only synthetic history is confined to the historical emissions bar profile and is visibly labeled; Release builds do not silently substitute that profile.
+
+## Findings and fixes
+
+1. P1: Both native bar series collapsed when `.ratio` mark widths were used with continuous axes. Fixed with explicit point widths; final price and emissions bars are fully visible.
+2. P1: The renewable line connected hour 23 back to hour 00 because chronological forecast order wrapped on a local-hour axis. Fixed by sorting plotted points by local hour.
+3. P1: The main app reported emissions unavailable even while the widget relay was configured. Fixed by resolving the relay URL from the bundled widget extension when the host app has no duplicate configuration key.
+4. P2: Interactive chart selection cleared the initial 18:00 review state. Fixed by retaining 18:00 as the inspection fallback while preserving native chart selection.
+5. P1: Tomorrow originally appeared selected while silently rendering Today before publication. Fixed by making both segments selectable and rendering an explicit `Tomorrow isn’t published yet` state with the expected Helsinki publication time.
+6. P2: Normalized emissions marks could visually cross the zero baseline. Fixed by clamping the score to 0–100 before rendering.
+7. P1: Price bars collided with the trailing y-axis labels. Fixed with explicit plot-dimension end padding; the final bar and the 0/5 tick labels no longer overlap.
+8. P1: Equal-width gauge bands misrepresented the actual price range and omitted range endpoints. Fixed by positioning the 4.99 and 8.99 thresholds proportionally inside the live daily range and labeling the numeric Lowest and Highest values.
+9. P1: The normalized Grid overlay mixed historical emissions with future renewable share and remained difficult to explain. Fixed by using separate Forecast and History views inside one unified card, with a percentage area/line chart for renewable share and raw gCO₂/kWh bars for emissions.
+10. P2: Grid states and day selection changed the analytical-card geometry. Fixed with equal minimum card widths, fixed segmented-control widths, fixed content heights, and reserved axis-label padding.
+
+No actionable P0, P1, or P2 differences remain for the approved first-trial scope.
+
+### Accepted first-trial constraints
+
+- The approved source uses illustrative tomorrow data. The live capture occurred before the provider published tomorrow, so Tomorrow shows the actual pre-publication state rather than fabricated bars.
+- The source mock places the day selector in custom window chrome. The first trial keeps native macOS navigation chrome and places the selector inside the price card.
+- The source includes additional cheapest/avoid summary strips and a separate grid-signal table column. The first trial expresses the same decision layer through the top best-window status and the table recommendation column; these can be expanded in the next review without changing the chart architecture.
+- Historical emissions require a local direct Fingrid credential. Without it, Debug shows a labeled preview profile while the live headline remains real; public Release shows no synthetic history.
+
+## Verification
+
+- [x] Native macOS Debug build succeeds.
+- [x] Grid conditions signal tests pass.
+- [x] Product maintenance logic tests pass.
+- [x] Software update trust tests pass.
+- [x] Uninstaller target tests pass.
+- [x] Price `BarMark`s are fully visible and rounded.
+- [x] Trailing price-axis labels remain clear of the last bar.
+- [x] The live range gauge uses proportional thresholds and shows Lowest/Highest endpoints.
+- [x] Today and Tomorrow both select correctly; unpublished Tomorrow never falls back to Today.
+- [x] Forecast and History use distinct charts and never mix unlike units on one axis.
+- [x] Both analytical cards and their controls keep stable widths across state changes.
+- [x] Local-hour wrap does not create a false line segment.
+- [x] Live app emissions load through the bundled public relay configuration.
+- [x] Debug preview history is visibly disclosed.
+- [x] Existing software update and danger-zone controls remain below the dashboard.
+
+final result: passed
+
+---
+
 # Electricity Rates Widget — Design QA
 
 ## Comparison target
