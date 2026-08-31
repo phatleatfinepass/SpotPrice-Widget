@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.1 - 2026-08-31
+
+### Changed
+
+- Published a minimal patch release so installations running 1.2.0 can exercise the complete in-app update discovery, checksum verification, and installer-opening flow against a newer public version.
+
+### Verified
+
+- Patch-version ordering now explicitly covers the 1.2.0 to 1.2.1 update path.
+- The uninstall behavior from 1.2.0 is unchanged: the confirmed action moves the installed app bundle to the Trash, which is the standard removal model for a standalone macOS app.
+
 ## 1.2.0 - 2026-08-31
 
 ### Added

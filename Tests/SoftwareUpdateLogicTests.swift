@@ -14,12 +14,15 @@ struct SoftwareUpdateLogicTests {
         let version110 = ReleaseVersion("1.1.0")
         let version119 = ReleaseVersion("v1.1.9")
         let version120 = ReleaseVersion("1.2.0")
+        let version121 = ReleaseVersion("v1.2.1")
 
         expect(version110 != nil, "A normal semantic version must parse.")
         expect(version119 != nil, "A v-prefixed semantic version must parse.")
         expect(version120 != nil, "The next minor version must parse.")
+        expect(version121 != nil, "A v-prefixed patch update must parse.")
         expect(version110! < version119!, "Patch versions must sort numerically.")
         expect(version119! < version120!, "Minor versions must sort numerically.")
+        expect(version120! < version121!, "A public patch update must sort above the installed version.")
         expect(ReleaseVersion("1.2") == nil, "Incomplete versions must be rejected.")
         expect(ReleaseVersion("1.2.0-beta") == nil, "Prerelease strings must be rejected.")
     }
