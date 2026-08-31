@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.2 - 2026-08-31
+
+### Changed
+
+- Replaced the installer-opening update flow with a signed, transactional in-place updater. The host and bounded maintenance helper independently verify a detached Ed25519 signature; the helper then validates the exact bundle identifier, newer semantic version, and complete nested code-signature tree before replacement.
+- The previous app remains available as a hidden rollback copy until the updated process launches and remains alive. A failed launch restores the previous version.
+
+### Fixed
+
+- Automatic update no longer removes the running app before a verified replacement is ready.
+- Removed the embedded Sparkle runtime, which cannot pass Hardened Runtime library validation in the project’s free ad-hoc signing mode because the app and framework have no matching Apple Team ID.
+
 ## 1.2.1 - 2026-08-31
 
 ### Changed

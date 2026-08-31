@@ -4,6 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 output_dir="${SPOT_PRICE_OUTPUT_DIR:-$repo_root/dist}"
 version="${SPOT_PRICE_VERSION:-}"
+build_version="${SPOT_PRICE_BUILD_VERSION:-}"
 distribution="${SPOT_PRICE_DISTRIBUTION:-direct}"
 signing_identity="${SPOT_PRICE_SIGNING_IDENTITY:-}"
 signing_keychain="${SPOT_PRICE_SIGNING_KEYCHAIN:-}"
@@ -20,6 +21,12 @@ fi
 version="${version#v}"
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
   || fail "SPOT_PRICE_VERSION must use semantic versioning, for example 1.0.0"
+
+if [[ -z "$build_version" ]]; then
+  build_version="$(awk -F ' = ' '/CURRENT_PROJECT_VERSION = / { gsub(/;/, "", $2); print $2; exit }' "$repo_root/SpotPriceWidget.xcodeproj/project.pbxproj")"
+fi
+[[ "$build_version" =~ ^[0-9]+$ ]] \
+  || fail "SPOT_PRICE_BUILD_VERSION must be numeric"
 
 case "$distribution" in
   direct|developer-id) ;;
@@ -73,7 +80,7 @@ staged_uninstaller="$staged_app/Contents/XPCServices/SpotPriceWidgetUninstaller.
 artifact_name="Finland-Electricity-Rates.dmg"
 approved_relay_url="https://finland-grid-emissions-relay.phat-le.workers.dev/v1/finland/emissions/current"
 
-printf 'Building Finland Electricity Rates %s for macOS…\n' "$version"
+printf 'Building Finland Electricity Rates %s (%s) for macOS…\n' "$version" "$build_version"
 xcodebuild -quiet \
   -project "$repo_root/SpotPriceWidget.xcodeproj" \
   -scheme SpotPriceWidget \
@@ -84,6 +91,7 @@ xcodebuild -quiet \
   ONLY_ACTIVE_ARCH=NO \
   CODE_SIGNING_ALLOWED=NO \
   MARKETING_VERSION="$version" \
+  CURRENT_PROJECT_VERSION="$build_version" \
   build
 
 [[ -d "$built_app" && -d "$built_extension" && -d "$built_uninstaller" ]] \

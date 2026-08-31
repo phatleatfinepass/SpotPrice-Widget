@@ -19,7 +19,8 @@ The project never asks you to disable Gatekeeper or remove quarantine.
 MANAGE
 
 Use Software Update in the app to check the official GitHub release, verify
-its disk-image checksum, and open the installer. Use Danger Zone only when
+its project signature, and install the newer app transactionally. The previous
+version is restored if the update cannot launch. Use Danger Zone only when
 you intend to reset rebuildable app data or move the app to the Trash.
 Uninstall asks for confirmation, then a narrowly scoped embedded service moves
 only the currently running app to the Trash and closes it. No file picker or

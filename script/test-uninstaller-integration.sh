@@ -73,7 +73,10 @@ if grep -Fq 'UNINSTALL_ERROR=' "$output_path"; then
 fi
 
 destination_path="$(sed -n 's/^UNINSTALL_DESTINATION=//p' "$output_path" | tail -1)"
-[[ -n "$destination_path" ]] || fail "the app did not report a Trash destination"
+if [[ -z "$destination_path" ]]; then
+  sed -n '1,120p' "$output_path" >&2
+  fail "the app did not report a Trash destination"
+fi
 [[ ! -e "$test_app" ]] || fail "the disposable app copy still exists at its original path"
 [[ -d "$destination_path" ]] || fail "the reported Trash destination does not exist"
 

@@ -100,6 +100,7 @@ jobs:
             -configuration Debug \
             -destination 'platform=macOS' \
             -derivedDataPath '${{ runner.temp }}/UninstallTestDerivedData' \
+            ENABLE_DEBUG_DYLIB=NO \
             build
 
       - name: Exercise embedded uninstall helper
@@ -109,6 +110,26 @@ jobs:
         env:
           SPOT_PRICE_DISTRIBUTION: direct
         run: script/package-release.sh
+
+      - name: Fetch audited update signing tool
+        shell: bash
+        run: |
+          curl -fL --retry 3 \
+            https://github.com/sparkle-project/Sparkle/releases/download/2.9.6/Sparkle-for-Swift-Package-Manager.zip \
+            -o "${RUNNER_TEMP}/Sparkle-for-Swift-Package-Manager.zip"
+          echo "8d5fb41d960b43f4a68aa14126bf62b098544ec8d191cdcc73eb14e63a8e7606  ${RUNNER_TEMP}/Sparkle-for-Swift-Package-Manager.zip" \
+            | shasum -a 256 -c -
+          mkdir -p "${RUNNER_TEMP}/SparkleUpdateTools"
+          ditto -x -k \
+            "${RUNNER_TEMP}/Sparkle-for-Swift-Package-Manager.zip" \
+            "${RUNNER_TEMP}/SparkleUpdateTools"
+          test -x "${RUNNER_TEMP}/SparkleUpdateTools/Sparkle/bin/sign_update"
+          echo "SPOT_PRICE_SIGN_UPDATE_TOOL=${RUNNER_TEMP}/SparkleUpdateTools/Sparkle/bin/sign_update" >> "$GITHUB_ENV"
+
+      - name: Sign and verify the automatic update
+        env:
+          SPOT_PRICE_UPDATE_PRIVATE_KEY: ${{ secrets.SPOT_PRICE_UPDATE_PRIVATE_KEY }}
+        run: script/sign-release-update.sh
 
       - name: Stage release notes
         run: cp docs/RELEASE-NOTES.md dist/RELEASE-NOTES.md
@@ -120,6 +141,7 @@ jobs:
           path: |
             dist/Finland-Electricity-Rates.dmg
             dist/Finland-Electricity-Rates.dmg.sha256
+            dist/Finland-Electricity-Rates.dmg.sig
             dist/RELEASE-NOTES.md
           if-no-files-found: error
 
@@ -145,6 +167,7 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             dist/Finland-Electricity-Rates.dmg \
             dist/Finland-Electricity-Rates.dmg.sha256 \
+            dist/Finland-Electricity-Rates.dmg.sig \
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
             --title "Finland Electricity Rates ${{ needs.package.outputs.version }}" \

@@ -26,6 +26,27 @@ final class UninstallService: NSObject, SpotPriceWidgetUninstalling {
             reply(nil, error.localizedDescription)
         }
     }
+
+    func installUpdate(
+        diskImageData: Data,
+        signatureText: String,
+        expectedVersion: String,
+        withReply reply: @escaping (String?, String?) -> Void
+    ) {
+        Task {
+            do {
+                let installedVersion = try await UpdateInstaller.install(
+                    diskImageData: diskImageData,
+                    signatureText: signatureText,
+                    expectedVersion: expectedVersion,
+                    containingAppURL: containingAppURL
+                )
+                reply(installedVersion, nil)
+            } catch {
+                reply(nil, error.localizedDescription)
+            }
+        }
+    }
 }
 
 final class UninstallListenerDelegate: NSObject, NSXPCListenerDelegate {

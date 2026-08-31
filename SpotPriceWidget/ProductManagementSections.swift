@@ -5,7 +5,7 @@ import SwiftUI
 import WidgetKit
 
 struct ProductManagementSections: View {
-    @StateObject private var updates = SoftwareUpdateService()
+    @EnvironmentObject private var updates: SoftwareUpdateService
     @StateObject private var maintenance = ProductMaintenanceService()
     @State private var pendingDangerAction: DangerAction?
 
@@ -23,7 +23,7 @@ struct ProductManagementSections: View {
                 Alert(
                     title: Text("Reset Widget Data?"),
                     message: Text(
-                        "This clears this app’s saved prices and downloaded installers, "
+                        "This clears this app’s saved prices, "
                         + "then asks WidgetKit to reload both widgets. WidgetKit controls when the refresh runs."
                     ),
                     primaryButton: .destructive(Text("Reset")) {
@@ -67,7 +67,7 @@ struct ProductManagementSections: View {
                 Spacer(minLength: 12)
 
                 VStack(alignment: .trailing, spacing: 8) {
-                    Button("Check for Updates") {
+                    Button("Check for Updates…") {
                         Task { await updates.checkForUpdates() }
                     }
                     .disabled(updates.isBusy)
@@ -95,14 +95,10 @@ struct ProductManagementSections: View {
     private var updateStatus: some View {
         switch updates.phase {
         case .idle:
-            Label("Check GitHub Releases when you’re ready.", systemImage: "clock")
+            Label("Updates are signed and installed in place.", systemImage: "checkmark.shield")
                 .foregroundStyle(.secondary)
         case .checking:
-            HStack(spacing: 7) {
-                ProgressView().controlSize(.small)
-                Text("Checking for updates…")
-            }
-            .foregroundStyle(.secondary)
+            progressStatus("Checking for updates…")
         case .upToDate:
             Label("You’re up to date.", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.green)
@@ -115,21 +111,21 @@ struct ProductManagementSections: View {
                 .foregroundStyle(.blue)
             }
         case .downloading:
-            HStack(spacing: 7) {
-                ProgressView().controlSize(.small)
-                Text("Downloading and verifying the installer…")
-            }
-            .foregroundStyle(.secondary)
-        case .installerOpened:
-            Label(
-                "Verified installer opened. Quit this app, then drag the new version to Applications.",
-                systemImage: "checkmark.shield.fill"
-            )
-            .foregroundStyle(.green)
+            progressStatus("Downloading and verifying the signed update…")
+        case .installing:
+            progressStatus("Installing the new version and checking that it opens…")
         case .failed(let message):
             Label(message, systemImage: "exclamationmark.triangle.fill")
                 .foregroundStyle(.red)
         }
+    }
+
+    private func progressStatus(_ text: String) -> some View {
+        HStack(spacing: 7) {
+            ProgressView().controlSize(.small)
+            Text(text)
+        }
+        .foregroundStyle(.secondary)
     }
 
     private var dangerZoneCard: some View {
@@ -272,7 +268,6 @@ private final class ProductMaintenanceService: ObservableObject {
         }
 
         WidgetDataStore.resetCaches()
-        SoftwareUpdateService.clearDownloadedInstallers()
         WidgetCenter.shared.reloadAllTimelines()
 
         do {

@@ -89,6 +89,7 @@ jobs:
       - name: Build
         env:
           CODE_SIGNING_ALLOWED_FOR_PLATFORM: ${{ matrix.name == 'macOS' && 'YES' || 'NO' }}
+          DEBUG_DYLIB_FOR_PLATFORM: ${{ matrix.name == 'macOS' && 'NO' || 'YES' }}
         run: |
           xcodebuild -quiet \
             -project SpotPriceWidget.xcodeproj \
@@ -97,6 +98,7 @@ jobs:
             -destination '${{ matrix.destination }}' \
             -derivedDataPath '${{ runner.temp }}/DerivedData-${{ matrix.name }}' \
             CODE_SIGNING_ALLOWED="$CODE_SIGNING_ALLOWED_FOR_PLATFORM" \
+            ENABLE_DEBUG_DYLIB="$DEBUG_DYLIB_FOR_PLATFORM" \
             build
 
       - name: Exercise embedded uninstall helper

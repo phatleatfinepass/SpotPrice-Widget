@@ -12,7 +12,7 @@ sdk_path="$(DEVELOPER_DIR="$developer_dir" xcrun --sdk macosx --show-sdk-path)"
   -parse-as-library \
   -sdk "$sdk_path" \
   -module-cache-path "$test_output/ModuleCache" \
-  "$repo_root/SpotPriceWidget/SoftwareUpdateService.swift" \
+  "$repo_root/SpotPriceWidget/SoftwareUpdateConfiguration.swift" \
   "$repo_root/Tests/SoftwareUpdateLogicTests.swift" \
   -o "$test_output/SoftwareUpdateLogicTests"
 

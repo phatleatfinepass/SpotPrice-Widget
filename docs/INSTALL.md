@@ -45,11 +45,11 @@ curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPrice-Widget/s
 
 The bottom of the macOS app contains two management sections:
 
-- **Software Update** checks the official GitHub Releases API. When a newer version exists, **Install Update…** downloads the release disk image and its checksum, verifies SHA-256 integrity, and opens the verified disk image. Quit the running app, then drag the new version to Applications. The app never executes a downloaded shell script.
-- **Danger Zone → Reset Widget Data…** clears the host app’s saved prices and downloaded update installers. Existing widgets stay in place, and WidgetKit is asked to refresh both timelines. WidgetKit controls when that refresh runs and preserves its own last-known fallback data during an outage.
+- **Software Update** checks the official GitHub Releases API. When a newer version exists, **Install Update…** downloads the release disk image and detached signature, verifies the project’s Ed25519 signature, validates the complete app signature tree, stages the new app, and relaunches it. The previous version stays recoverable until the new process passes launch validation. The app never executes a downloaded shell script.
+- **Danger Zone → Reset Widget Data…** clears the host app’s saved prices. Existing widgets stay in place, and WidgetKit is asked to refresh both timelines. WidgetKit controls when that refresh runs and preserves its own last-known fallback data during an outage.
 - **Danger Zone → Uninstall…** confirms the action, clears local widget data, moves the currently running app to the Trash, and closes it.
 
-Both Danger Zone actions require confirmation. The host app and widget remain sandboxed. Uninstall uses a narrowly scoped embedded service that accepts no file path and can move only the app bundle that contains it; the app never receives broad disk access. Installing an update keeps the final drag-to-Applications step visible to the user.
+Both Danger Zone actions require confirmation. The host app and widget remain sandboxed. Uninstall and replacement use a narrowly scoped embedded service that accepts no filesystem destination and can operate only on the app bundle that contains it. Update installation accepts only the signed project disk image, expected newer version, and detached signature; it cannot install an arbitrary app or choose another destination.
 
 ## Add the widgets
 

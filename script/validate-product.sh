@@ -18,11 +18,13 @@ for script_path in \
   "$repo_root/script/install.sh" \
   "$repo_root/script/install-from-source.sh" \
   "$repo_root/script/package-release.sh" \
+  "$repo_root/script/sign-release-update.sh" \
   "$repo_root/script/test-grid-conditions.sh" \
   "$repo_root/script/test-product-maintenance.sh" \
   "$repo_root/script/test-software-update.sh" \
   "$repo_root/script/test-uninstaller-integration.sh" \
   "$repo_root/script/test-uninstaller-target.sh" \
+  "$repo_root/script/verify-update-signature.sh" \
   "$repo_root/script/verify-grid-emissions-relay.sh"; do
   bash -n "$script_path" || fail "invalid shell syntax in $script_path"
 done
@@ -54,12 +56,18 @@ for required_path in \
   "$repo_root/docs/RELEASE-NOTES.md" \
   "$repo_root/SpotPriceWidget/ProductMaintenanceLogic.swift" \
   "$repo_root/SpotPriceWidget/ProductManagementSections.swift" \
+  "$repo_root/SpotPriceWidget/SoftwareUpdateConfiguration.swift" \
   "$repo_root/SpotPriceWidget/SoftwareUpdateService.swift" \
   "$repo_root/SpotPriceWidgetUninstaller/Info.plist" \
   "$repo_root/SpotPriceWidgetUninstaller/UninstallSecurity.swift" \
   "$repo_root/SpotPriceWidgetUninstaller/UninstallServiceProtocol.swift" \
   "$repo_root/SpotPriceWidgetUninstaller/UninstallTarget.swift" \
+  "$repo_root/SpotPriceWidgetUninstaller/UpdateInstaller.swift" \
+  "$repo_root/SpotPriceWidgetUninstaller/UpdateTrust.swift" \
   "$repo_root/SpotPriceWidgetUninstaller/main.swift" \
+  "$repo_root/script/sign-release-update.sh" \
+  "$repo_root/script/verify-update-signature.sh" \
+  "$repo_root/script/verify-update-signature.swift" \
   "$repo_root/backend/grid-emissions-relay/package-lock.json" \
   "$repo_root/backend/grid-emissions-relay/src/index.ts" \
   "$repo_root/backend/grid-emissions-relay/wrangler.jsonc"; do
@@ -91,13 +99,27 @@ grep -Fq 'dstPath = "$(CONTENTS_FOLDER_PATH)/XPCServices";' "$project_file" \
   || fail "the host must embed the helper only in Contents/XPCServices"
 
 grep -Fq 'https://api.github.com/repos/phatleatfinepass/SpotPrice-Widget/releases/latest' \
-  "$repo_root/SpotPriceWidget/SoftwareUpdateService.swift" \
+  "$repo_root/SpotPriceWidget/SoftwareUpdateConfiguration.swift" \
   || fail "the in-app updater must check the fixed official repository"
-grep -Fq 'Finland-Electricity-Rates.dmg.sha256' \
+grep -Fq 'Finland-Electricity-Rates.dmg.sig' \
   "$repo_root/SpotPriceWidget/SoftwareUpdateService.swift" \
-  || fail "the in-app updater must require the release checksum"
-grep -Fq 'SHA256.hash' "$repo_root/SpotPriceWidget/SoftwareUpdateService.swift" \
-  || fail "the in-app updater must verify the disk image checksum"
+  || fail "the updater must require an Ed25519 signature asset"
+grep -Fq 'Curve25519.Signing.PublicKey' \
+  "$repo_root/SpotPriceWidget/SoftwareUpdateConfiguration.swift" \
+  || fail "the sandboxed host must verify the update signature"
+grep -Fq 'ProductUpdaterClient.install' \
+  "$repo_root/SpotPriceWidget/SoftwareUpdateService.swift" \
+  || fail "the sandboxed host must delegate replacement to the bounded helper"
+grep -Fq 'UpdateTrust.verify' \
+  "$repo_root/SpotPriceWidgetUninstaller/UpdateInstaller.swift" \
+  || fail "the update helper must independently verify the update signature"
+grep -Fq 'kSecCSCheckNestedCode' \
+  "$repo_root/SpotPriceWidgetUninstaller/UpdateInstaller.swift" \
+  || fail "the update helper must validate the complete nested signature tree"
+host_update_key="$(sed -n 's/.*publicKeyBase64 = "\([^"]*\)".*/\1/p' "$repo_root/SpotPriceWidget/SoftwareUpdateConfiguration.swift")"
+helper_update_key="$(sed -n 's/.*publicKeyBase64 = "\([^"]*\)".*/\1/p' "$repo_root/SpotPriceWidgetUninstaller/UpdateTrust.swift")"
+[[ -n "$host_update_key" && "$host_update_key" == "$helper_update_key" ]] \
+  || fail "the host and helper must pin the same update-signing public key"
 grep -Fq 'ProductUninstallerClient.moveContainingAppToTrash' \
   "$repo_root/SpotPriceWidget/ProductManagementSections.swift" \
   || fail "the sandboxed host must delegate uninstall to the embedded XPC service"
@@ -151,6 +173,18 @@ grep -Fq -- '--identifier personal.SpotPriceWidget.Uninstaller' \
 grep -Eq 'SPOT_PRICE_DISTRIBUTION: direct' \
   "$repo_root/.github/workflows/release.yml" \
   || fail "the public release workflow must explicitly select direct distribution"
+grep -Fq 'ENABLE_DEBUG_DYLIB="$DEBUG_DYLIB_FOR_PLATFORM"' \
+  "$repo_root/.github/workflows/ci.yml" \
+  || fail "the macOS integration build must avoid an ad-hoc Hardened Runtime Debug dylib"
+grep -Fq 'ENABLE_DEBUG_DYLIB=NO' \
+  "$repo_root/.github/workflows/release.yml" \
+  || fail "the release-gate integration build must avoid an ad-hoc Hardened Runtime Debug dylib"
+grep -Fq 'SPOT_PRICE_UPDATE_PRIVATE_KEY: ${{ secrets.SPOT_PRICE_UPDATE_PRIVATE_KEY }}' \
+  "$repo_root/.github/workflows/release.yml" \
+  || fail "the release workflow must read the update private key only from the provider secret store"
+grep -Fq 'dist/Finland-Electricity-Rates.dmg.sig' \
+  "$repo_root/.github/workflows/release.yml" \
+  || fail "the public release workflow must publish the detached update signature"
 grep -Fq -- '--repo "$GITHUB_REPOSITORY"' \
   "$repo_root/.github/workflows/release.yml" \
   || fail "the checkout-free publisher must name its GitHub repository explicitly"

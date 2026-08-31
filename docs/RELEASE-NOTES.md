@@ -1,13 +1,13 @@
-# Finland Electricity Rates 1.2.1
+# Finland Electricity Rates 1.2.2
 
-This is a minimal public patch release created to exercise Software Update from version 1.2.0. The app checks the fixed official GitHub repository, recognizes 1.2.1 as newer, downloads the disk image and its published checksum, verifies SHA-256 integrity, and opens the verified installer without executing a remote shell script.
+Version 1.2.2 is the bridge to signed, transactional in-app updates. The app checks the fixed official GitHub repository, downloads the disk image and detached Ed25519 signature, and verifies that project signature before any installation work begins. A narrowly scoped maintenance service independently verifies the same signature, exact bundle identifier, newer version, and complete nested code-signature tree.
 
-There are no widget-design or data-source changes in this patch. The maintenance controls introduced in 1.2.0 are unchanged. Uninstall moves the exact running app bundle to the Trash and closes it, which is the standard removal model for a standalone macOS app.
+The new app is fully staged before the installed copy is moved aside. The previous version remains available as a rollback until 1.2.2 launches and stays open; a failed launch restores the previous version. The app never executes a downloaded shell script, disables Gatekeeper, removes quarantine, or accepts an arbitrary app or destination from the update request.
 
-The app and widget remain sandboxed. The narrowly scoped embedded XPC service accepts no filesystem path, derives the app from its own bundle location, and validates the caller’s user, signing identifier, and exact containing-app path before performing the Trash operation. The public Fingrid relay remains keyless for customers, and its credentials remain encrypted server-side rather than embedded in the app, installer, repository, logs, or public response.
+Installations on 1.2.1 or earlier still contain the previous installer-opening updater, so installing this bridge release requires the existing manual disk-image step once. After 1.2.2 is installed, later signed releases can use the automatic in-place flow.
 
-The release includes the Electricity Rates and Grid Conditions widgets for macOS 26.5 or later. The Universal app supports Apple silicon and Intel Macs.
+There are no widget-design or data-source changes in this bridge. Electricity Rates, Grid Conditions, the public keyless Fingrid relay, reset, and uninstall behavior remain unchanged.
 
-This is a free direct release. It is ad-hoc signed for bundle integrity but is not Apple-notarized and does not carry a paid Developer ID identity. On first launch, macOS may require approval in **System Settings → Privacy & Security → Open Anyway**. The app and installer never disable Gatekeeper or remove quarantine protection.
+The release supports macOS 26.5 or later on Apple silicon and Intel Macs. It is a free direct release: the bundles are ad-hoc signed for integrity but are not Apple-notarized and do not carry a paid Developer ID identity. First installation can still require **System Settings → Privacy & Security → Open Anyway**.
 
-Download both release assets if you want to verify the disk image SHA-256 checksum before installation.
+The release contains the disk image, its SHA-256 checksum, and the detached project update signature.

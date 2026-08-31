@@ -49,9 +49,6 @@ final class SpotPriceViewModel: ObservableObject {
         guard !isLoading else { return }
 
         WidgetDataStore.resetCaches()
-#if os(macOS)
-        SoftwareUpdateService.clearDownloadedInstallers()
-#endif
         presentation = nil
         errorMessage = nil
         WidgetCenter.shared.reloadAllTimelines()
