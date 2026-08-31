@@ -185,6 +185,9 @@ grep -Fq 'SPOT_PRICE_UPDATE_PRIVATE_KEY: ${{ secrets.SPOT_PRICE_UPDATE_PRIVATE_K
 grep -Fq 'dist/Finland-Electricity-Rates.dmg.sig' \
   "$repo_root/.github/workflows/release.yml" \
   || fail "the public release workflow must publish the detached update signature"
+grep -Fq 'SparkleUpdateTools/bin/sign_update' \
+  "$repo_root/.github/workflows/release.yml" \
+  || fail "the release workflow must use the verified archive's actual signing-tool path"
 grep -Fq -- '--repo "$GITHUB_REPOSITORY"' \
   "$repo_root/.github/workflows/release.yml" \
   || fail "the checkout-free publisher must name its GitHub repository explicitly"

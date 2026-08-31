@@ -123,8 +123,8 @@ jobs:
           ditto -x -k \
             "${RUNNER_TEMP}/Sparkle-for-Swift-Package-Manager.zip" \
             "${RUNNER_TEMP}/SparkleUpdateTools"
-          test -x "${RUNNER_TEMP}/SparkleUpdateTools/Sparkle/bin/sign_update"
-          echo "SPOT_PRICE_SIGN_UPDATE_TOOL=${RUNNER_TEMP}/SparkleUpdateTools/Sparkle/bin/sign_update" >> "$GITHUB_ENV"
+          test -x "${RUNNER_TEMP}/SparkleUpdateTools/bin/sign_update"
+          echo "SPOT_PRICE_SIGN_UPDATE_TOOL=${RUNNER_TEMP}/SparkleUpdateTools/bin/sign_update" >> "$GITHUB_ENV"
 
       - name: Sign and verify the automatic update
         env:
