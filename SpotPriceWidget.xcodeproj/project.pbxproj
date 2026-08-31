@@ -10,6 +10,7 @@
 		CBE02E9C303E1D5000926383 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CBE02E9B303E1D5000926383 /* WidgetKit.framework */; };
 		CBE02E9E303E1D5000926383 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CBE02E9D303E1D5000926383 /* SwiftUI.framework */; };
 		CBE02EAD303E1D5100926383 /* SpotPriceWidgetFinlandExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CBE02E99303E1D5000926383 /* SpotPriceWidgetFinlandExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		CBE02ED1303E400000926383 /* SpotPriceWidgetUninstaller.xpc in Embed XPC Services */ = {isa = PBXBuildFile; fileRef = CBE02ED4303E400000926383 /* SpotPriceWidgetUninstaller.xpc */; platformFilters = (macos, ); settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -19,6 +20,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = CBE02E98303E1D5000926383;
 			remoteInfo = SpotPriceWidgetFinlandExtension;
+		};
+		CBE02ED2303E400000926383 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CBE02E7F303E1CFF00926383 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CBE02EDA303E400000926383;
+			remoteInfo = SpotPriceWidgetUninstaller;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -34,6 +42,17 @@
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CBE02ED3303E400000926383 /* Embed XPC Services */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/XPCServices";
+			dstSubfolderSpec = 16;
+			files = (
+				CBE02ED1303E400000926383 /* SpotPriceWidgetUninstaller.xpc in Embed XPC Services */,
+			);
+			name = "Embed XPC Services";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +60,7 @@
 		CBE02E99303E1D5000926383 /* SpotPriceWidgetFinlandExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SpotPriceWidgetFinlandExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CBE02E9B303E1D5000926383 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		CBE02E9D303E1D5000926383 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		CBE02ED4303E400000926383 /* SpotPriceWidgetUninstaller.xpc */ = {isa = PBXFileReference; explicitFileType = "wrapper.xpc-service"; includeInIndex = 0; path = SpotPriceWidgetUninstaller.xpc; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -50,6 +70,13 @@
 				Info.plist,
 			);
 			target = CBE02E98303E1D5000926383 /* SpotPriceWidgetFinlandExtension */;
+		};
+		CBE02ED5303E400000926383 /* Exceptions for "SpotPriceWidgetUninstaller" folder in "SpotPriceWidgetUninstaller" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = CBE02EDA303E400000926383 /* SpotPriceWidgetUninstaller */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -72,6 +99,14 @@
 			path = Shared;
 			sourceTree = "<group>";
 		};
+		CBE02ED6303E400000926383 /* SpotPriceWidgetUninstaller */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				CBE02ED5303E400000926383 /* Exceptions for "SpotPriceWidgetUninstaller" folder in "SpotPriceWidgetUninstaller" target */,
+			);
+			path = SpotPriceWidgetUninstaller;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,6 +126,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CBE02ED7303E400000926383 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -100,6 +142,7 @@
 				CBE02E89303E1D0000926383 /* SpotPriceWidget */,
 				CBE02EC0303E300000926383 /* Shared */,
 				CBE02E9F303E1D5000926383 /* SpotPriceWidgetFinland */,
+				CBE02ED6303E400000926383 /* SpotPriceWidgetUninstaller */,
 				CBE02E9A303E1D5000926383 /* Frameworks */,
 				CBE02E88303E1D0000926383 /* Products */,
 			);
@@ -110,6 +153,7 @@
 			children = (
 				CBE02E87303E1D0000926383 /* SpotPriceWidget.app */,
 				CBE02E99303E1D5000926383 /* SpotPriceWidgetFinlandExtension.appex */,
+				CBE02ED4303E400000926383 /* SpotPriceWidgetUninstaller.xpc */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -134,11 +178,13 @@
 				CBE02E84303E1D0000926383 /* Frameworks */,
 				CBE02E85303E1D0000926383 /* Resources */,
 				CBE02EB2303E1D5100926383 /* Embed Foundation Extensions */,
+				CBE02ED3303E400000926383 /* Embed XPC Services */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				CBE02EAC303E1D5100926383 /* PBXTargetDependency */,
+				CBE02EDB303E400000926383 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				CBE02E89303E1D0000926383 /* SpotPriceWidget */,
@@ -174,6 +220,28 @@
 			productReference = CBE02E99303E1D5000926383 /* SpotPriceWidgetFinlandExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		CBE02EDA303E400000926383 /* SpotPriceWidgetUninstaller */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CBE02EDE303E400000926383 /* Build configuration list for PBXNativeTarget "SpotPriceWidgetUninstaller" */;
+			buildPhases = (
+				CBE02ED8303E400000926383 /* Sources */,
+				CBE02ED7303E400000926383 /* Frameworks */,
+				CBE02ED9303E400000926383 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				CBE02ED6303E400000926383 /* SpotPriceWidgetUninstaller */,
+			);
+			name = SpotPriceWidgetUninstaller;
+			packageProductDependencies = (
+			);
+			productName = SpotPriceWidgetUninstaller;
+			productReference = CBE02ED4303E400000926383 /* SpotPriceWidgetUninstaller.xpc */;
+			productType = "com.apple.product-type.xpc-service";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -188,6 +256,9 @@
 						CreatedOnToolsVersion = 26.6;
 					};
 					CBE02E98303E1D5000926383 = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					CBE02EDA303E400000926383 = {
 						CreatedOnToolsVersion = 26.6;
 					};
 				};
@@ -208,6 +279,7 @@
 			targets = (
 				CBE02E86303E1D0000926383 /* SpotPriceWidget */,
 				CBE02E98303E1D5000926383 /* SpotPriceWidgetFinlandExtension */,
+				CBE02EDA303E400000926383 /* SpotPriceWidgetUninstaller */,
 			);
 		};
 /* End PBXProject section */
@@ -221,6 +293,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		CBE02E97303E1D5000926383 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CBE02ED9303E400000926383 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -244,6 +323,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CBE02ED8303E400000926383 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -251,6 +337,14 @@
 			isa = PBXTargetDependency;
 			target = CBE02E98303E1D5000926383 /* SpotPriceWidgetFinlandExtension */;
 			targetProxy = CBE02EAB303E1D5100926383 /* PBXContainerItemProxy */;
+		};
+		CBE02EDB303E400000926383 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilters = (
+				macos,
+			);
+			target = CBE02EDA303E400000926383 /* SpotPriceWidgetUninstaller */;
+			targetProxy = CBE02ED2303E400000926383 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -385,13 +479,12 @@
 				CODE_SIGN_STYLE = Automatic;
 				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 118;
+				CURRENT_PROJECT_VERSION = 120;
 				DEVELOPMENT_TEAM = NWP7L2BJP5;
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Finland Electricity Rates";
 				EXECUTABLE_NAME = SpotPriceWidget;
@@ -406,10 +499,9 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = personal.SpotPriceWidget;
 				PRODUCT_NAME = "Finland Electricity Rates";
-				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
@@ -430,12 +522,11 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = SpotPriceWidget/SpotPriceWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 118;
+				CURRENT_PROJECT_VERSION = 120;
 				DEVELOPMENT_TEAM = NWP7L2BJP5;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Finland Electricity Rates";
 				EXECUTABLE_NAME = SpotPriceWidget;
@@ -450,10 +541,9 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = personal.SpotPriceWidget;
 				PRODUCT_NAME = "Finland Electricity Rates";
-				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
@@ -475,7 +565,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
-				CURRENT_PROJECT_VERSION = 118;
+				CURRENT_PROJECT_VERSION = 120;
 				DEVELOPMENT_TEAM = NWP7L2BJP5;
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
 				ENABLE_APP_SANDBOX = YES;
@@ -493,7 +583,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = personal.SpotPriceWidget.SpotPriceWidgetFinland;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -515,7 +605,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = SpotPriceWidgetFinland/SpotPriceWidgetFinland.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 118;
+				CURRENT_PROJECT_VERSION = 120;
 				DEVELOPMENT_TEAM = NWP7L2BJP5;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -532,7 +622,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = personal.SpotPriceWidget.SpotPriceWidgetFinland;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -544,6 +634,59 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		CBE02EDC303E400000926383 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 120;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SpotPriceWidgetUninstaller/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = personal.SpotPriceWidget.Uninstaller;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		CBE02EDD303E400000926383 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 120;
+				DEVELOPMENT_TEAM = NWP7L2BJP5;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SpotPriceWidgetUninstaller/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = personal.SpotPriceWidget.Uninstaller;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
@@ -573,6 +716,15 @@
 			buildConfigurations = (
 				CBE02EB0303E1D5100926383 /* Debug */,
 				CBE02EB1303E1D5100926383 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CBE02EDE303E400000926383 /* Build configuration list for PBXNativeTarget "SpotPriceWidgetUninstaller" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CBE02EDC303E400000926383 /* Debug */,
+				CBE02EDD303E400000926383 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.2.0 - 2026-08-31
+
+### Added
+
+- The macOS host app now checks the official GitHub release for updates, verifies the disk-image SHA-256 checksum, and opens the verified installer.
+- A confirmed Danger Zone can reset rebuildable app data or move the exact running app to the Trash through a narrowly scoped embedded XPC service.
+
+### Changed
+
+- Direct builds keep host and widget fallback caches in their own sandboxes. Reset clears the host cache and asks WidgetKit to replace extension caches with fresh timelines.
+- The app and widget remain sandboxed. The uninstall service runs outside the sandbox, accepts no filesystem path, validates the caller’s user, signing identifier, and exact containing-app path, and can recycle only its containing app.
+
+### Fixed
+
+- Uninstall no longer falls back to Finder or requires the user to locate and delete the app manually.
+- The XPC client retains each request until its reply arrives, preventing a suspended uninstall task.
+- Ad-hoc direct builds no longer declare an App Group that macOS denies at runtime.
+
 ## 1.1.0 - 2026-08-31
 
 ### Added

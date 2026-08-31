@@ -41,6 +41,16 @@ curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPrice-Widget/s
 - `SPOT_PRICE_REPOSITORY` — GitHub `owner/repository`; intended for testing forks.
 - `SPOT_PRICE_RELEASE_BASE_URL` — exact release-asset base URL; intended for release validation.
 
+## In-app maintenance
+
+The bottom of the macOS app contains two management sections:
+
+- **Software Update** checks the official GitHub Releases API. When a newer version exists, **Install Update…** downloads the release disk image and its checksum, verifies SHA-256 integrity, and opens the verified disk image. Quit the running app, then drag the new version to Applications. The app never executes a downloaded shell script.
+- **Danger Zone → Reset Widget Data…** clears the host app’s saved prices and downloaded update installers. Existing widgets stay in place, and WidgetKit is asked to refresh both timelines. WidgetKit controls when that refresh runs and preserves its own last-known fallback data during an outage.
+- **Danger Zone → Uninstall…** confirms the action, clears local widget data, moves the currently running app to the Trash, and closes it.
+
+Both Danger Zone actions require confirmation. The host app and widget remain sandboxed. Uninstall uses a narrowly scoped embedded service that accepts no file path and can move only the app bundle that contains it; the app never receives broad disk access. Installing an update keeps the final drag-to-Applications step visible to the user.
+
 ## Add the widgets
 
 1. Open **Finland Electricity Rates** once after installation.
@@ -74,4 +84,4 @@ Always update a local Debug installation with the complete `.app` bundle. Do not
 
 ## Remove the app
 
-Quit the host app, then move `Finland Electricity Rates.app` from Applications to the Trash. Timestamped backups beside the installation can also be moved to the Trash after confirming the current installation works.
+Use **Danger Zone → Uninstall…** in the host app and confirm **Move to Trash**. The app clears its local widget data, moves its exact running bundle to the Trash, and closes. You can restore it from the Trash until the Trash is emptied. Timestamped backups beside the installation can also be moved to the Trash after confirming the current installation works.

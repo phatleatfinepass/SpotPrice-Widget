@@ -19,6 +19,10 @@ for script_path in \
   "$repo_root/script/install-from-source.sh" \
   "$repo_root/script/package-release.sh" \
   "$repo_root/script/test-grid-conditions.sh" \
+  "$repo_root/script/test-product-maintenance.sh" \
+  "$repo_root/script/test-software-update.sh" \
+  "$repo_root/script/test-uninstaller-integration.sh" \
+  "$repo_root/script/test-uninstaller-target.sh" \
   "$repo_root/script/verify-grid-emissions-relay.sh"; do
   bash -n "$script_path" || fail "invalid shell syntax in $script_path"
 done
@@ -29,6 +33,11 @@ version_count="$(printf '%s\n' "$versions" | awk 'NF { count += 1 } END { print 
 [[ "$versions" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] \
   || fail "marketing version must use semantic versioning"
 
+build_versions="$(awk -F ' = ' '/CURRENT_PROJECT_VERSION = / { gsub(/;/, "", $2); print $2 }' "$project_file" | sort -u)"
+build_version_count="$(printf '%s\n' "$build_versions" | awk 'NF { count += 1 } END { print count + 0 }')"
+[[ "$build_version_count" == "1" && "$build_versions" =~ ^[0-9]+$ ]] \
+  || fail "all app targets must use one numeric build version"
+
 product_name_count="$(grep -Fc 'PRODUCT_NAME = "Finland Electricity Rates";' "$project_file" || true)"
 executable_name_count="$(grep -Fc 'EXECUTABLE_NAME = SpotPriceWidget;' "$project_file" || true)"
 [[ "$product_name_count" == "2" && "$executable_name_count" == "2" ]] \
@@ -36,12 +45,21 @@ executable_name_count="$(grep -Fc 'EXECUTABLE_NAME = SpotPriceWidget;' "$project
 
 for required_path in \
   "$repo_root/Shared/PrivacyInfo.xcprivacy" \
+  "$repo_root/Shared/WidgetDataStore.swift" \
   "$repo_root/PRIVACY.md" \
   "$repo_root/SUPPORT.md" \
   "$repo_root/CHANGELOG.md" \
   "$repo_root/docs/RELEASE.md" \
   "$repo_root/docs/DIRECT-DISTRIBUTION.txt" \
   "$repo_root/docs/RELEASE-NOTES.md" \
+  "$repo_root/SpotPriceWidget/ProductMaintenanceLogic.swift" \
+  "$repo_root/SpotPriceWidget/ProductManagementSections.swift" \
+  "$repo_root/SpotPriceWidget/SoftwareUpdateService.swift" \
+  "$repo_root/SpotPriceWidgetUninstaller/Info.plist" \
+  "$repo_root/SpotPriceWidgetUninstaller/UninstallSecurity.swift" \
+  "$repo_root/SpotPriceWidgetUninstaller/UninstallServiceProtocol.swift" \
+  "$repo_root/SpotPriceWidgetUninstaller/UninstallTarget.swift" \
+  "$repo_root/SpotPriceWidgetUninstaller/main.swift" \
   "$repo_root/backend/grid-emissions-relay/package-lock.json" \
   "$repo_root/backend/grid-emissions-relay/src/index.ts" \
   "$repo_root/backend/grid-emissions-relay/wrangler.jsonc"; do
@@ -51,6 +69,60 @@ done
 plutil -lint "$repo_root/Shared/PrivacyInfo.xcprivacy" >/dev/null
 plutil -lint "$repo_root/SpotPriceWidget/SpotPriceWidget.entitlements" >/dev/null
 plutil -lint "$repo_root/SpotPriceWidgetFinland/SpotPriceWidgetFinland.entitlements" >/dev/null
+plutil -lint "$repo_root/SpotPriceWidgetUninstaller/Info.plist" >/dev/null
+
+if grep -Fq 'com.apple.security.application-groups' \
+  "$repo_root/SpotPriceWidget/SpotPriceWidget.entitlements" \
+  "$repo_root/SpotPriceWidgetFinland/SpotPriceWidgetFinland.entitlements"; then
+  fail "the ad-hoc direct build must not declare an unavailable App Group"
+fi
+if grep -Fq 'com.apple.security.files.user-selected.read-write' \
+  "$repo_root/SpotPriceWidget/SpotPriceWidget.entitlements"; then
+  fail "the host must not retain user-selected file access after moving uninstall into the bounded helper"
+fi
+
+[[ "$(grep -Fc 'ENABLE_APP_SANDBOX = YES;' "$project_file")" == "4" ]] \
+  || fail "the host and widget targets must remain sandboxed in Debug and Release"
+[[ "$(grep -Fc 'ENABLE_APP_SANDBOX = NO;' "$project_file")" == "2" ]] \
+  || fail "only the uninstall helper may run outside the app sandbox"
+grep -Fq 'productType = "com.apple.product-type.xpc-service";' "$project_file" \
+  || fail "the project must include the XPC uninstall service target"
+grep -Fq 'dstPath = "$(CONTENTS_FOLDER_PATH)/XPCServices";' "$project_file" \
+  || fail "the host must embed the helper only in Contents/XPCServices"
+
+grep -Fq 'https://api.github.com/repos/phatleatfinepass/SpotPrice-Widget/releases/latest' \
+  "$repo_root/SpotPriceWidget/SoftwareUpdateService.swift" \
+  || fail "the in-app updater must check the fixed official repository"
+grep -Fq 'Finland-Electricity-Rates.dmg.sha256' \
+  "$repo_root/SpotPriceWidget/SoftwareUpdateService.swift" \
+  || fail "the in-app updater must require the release checksum"
+grep -Fq 'SHA256.hash' "$repo_root/SpotPriceWidget/SoftwareUpdateService.swift" \
+  || fail "the in-app updater must verify the disk image checksum"
+grep -Fq 'ProductUninstallerClient.moveContainingAppToTrash' \
+  "$repo_root/SpotPriceWidget/ProductManagementSections.swift" \
+  || fail "the sandboxed host must delegate uninstall to the embedded XPC service"
+if grep -Fq 'NSOpenPanel' "$repo_root/SpotPriceWidget/ProductManagementSections.swift"; then
+  fail "uninstall must not require a user-selected app path"
+fi
+grep -Fq 'NSWorkspace.shared.recycle([appURL])' \
+  "$repo_root/SpotPriceWidgetUninstaller/main.swift" \
+  || fail "the helper must use Finder-compatible Trash semantics"
+grep -Fq 'func moveContainingAppToTrash(' \
+  "$repo_root/SpotPriceWidgetUninstaller/UninstallServiceProtocol.swift" \
+  || fail "the helper protocol must expose only its fixed containing-app operation"
+grep -Fq 'connection.effectiveUserIdentifier == geteuid()' \
+  "$repo_root/SpotPriceWidgetUninstaller/UninstallSecurity.swift" \
+  || fail "the helper must reject callers from another user"
+grep -Fq 'kSecCodeInfoIdentifier' \
+  "$repo_root/SpotPriceWidgetUninstaller/UninstallSecurity.swift" \
+  || fail "the helper must verify the caller’s signing identifier"
+grep -Fq 'callerAppURL' \
+  "$repo_root/SpotPriceWidgetUninstaller/UninstallSecurity.swift" \
+  || fail "the helper must verify that its caller is the exact containing app"
+if grep -Eq 'moveContainingAppToTrash\([^)]*(path|url|URL)' \
+  "$repo_root/SpotPriceWidgetUninstaller/UninstallServiceProtocol.swift"; then
+  fail "the helper protocol must never accept an arbitrary filesystem target"
+fi
 
 if git -C "$repo_root" grep -En \
   '(FINGRID_API_KEY|x-api-key)[[:space:]]*[:=][[:space:]]*[A-Za-z0-9_-]{16,}' \
@@ -70,6 +142,12 @@ grep -Fq 'node_modules/' "$repo_root/.gitignore" \
 grep -Fq 'distribution="${SPOT_PRICE_DISTRIBUTION:-direct}"' \
   "$repo_root/script/package-release.sh" \
   || fail "release packaging must default to direct distribution"
+grep -Fq 'staged_uninstaller="$staged_app/Contents/XPCServices/SpotPriceWidgetUninstaller.xpc"' \
+  "$repo_root/script/package-release.sh" \
+  || fail "release packaging must validate and sign the embedded uninstall helper"
+grep -Fq -- '--identifier personal.SpotPriceWidget.Uninstaller' \
+  "$repo_root/script/package-release.sh" \
+  || fail "release packaging must pin the helper signing identifier"
 grep -Eq 'SPOT_PRICE_DISTRIBUTION: direct' \
   "$repo_root/.github/workflows/release.yml" \
   || fail "the public release workflow must explicitly select direct distribution"

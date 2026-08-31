@@ -286,9 +286,13 @@ struct SpotPriceRepository {
 
 struct SpotPriceCache {
     private let defaults: UserDefaults
-    private let key = "finland-spot-price-cache-v1"
+    private let key = WidgetDataStore.spotPriceCacheKey
 
-    init(defaults: UserDefaults = .standard) {
+    init() {
+        self.defaults = WidgetDataStore.defaults(preparing: WidgetDataStore.spotPriceCacheKey)
+    }
+
+    init(defaults: UserDefaults) {
         self.defaults = defaults
     }
 

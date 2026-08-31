@@ -3,6 +3,7 @@ import Foundation
 @main
 struct GridConditionsSignalTests {
     static func main() {
+        testWidgetDataResetClearsOnlyRebuildableCaches()
         testCurrentStateMatrix()
         testStaleAndMissingEmissionsSuppressGreen()
         testStaleForecastSuppressesForecastColors()
@@ -32,6 +33,37 @@ struct GridConditionsSignalTests {
         testTimelineTicksStayUniqueAcrossDaylightSavingChange()
         testSpotPriceRejectsExpiredFutureAndGappedCoverage()
         print("Grid conditions signal tests passed.")
+    }
+
+    private static func testWidgetDataResetClearsOnlyRebuildableCaches() {
+        let suite = "personal.SpotPriceWidget.tests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suite) else {
+            expect(false, "Could not create isolated UserDefaults suites.")
+            return
+        }
+        defer {
+            defaults.removePersistentDomain(forName: suite)
+        }
+
+        let cacheKeys = [
+            WidgetDataStore.spotPriceCacheKey,
+            WidgetDataStore.gridForecastCacheKey,
+            WidgetDataStore.gridEmissionsCacheKey,
+        ]
+        for cacheKey in cacheKeys {
+            defaults.set(Data([0x1]), forKey: cacheKey)
+        }
+        defaults.set("keep", forKey: "unrelated-preference")
+
+        WidgetDataStore.resetCaches(defaults: defaults)
+
+        for cacheKey in cacheKeys {
+            expect(defaults.object(forKey: cacheKey) == nil, "Cache was not reset: \(cacheKey)")
+        }
+        expect(
+            defaults.string(forKey: "unrelated-preference") == "keep",
+            "Reset must not clear unrelated preferences."
+        )
     }
 
     private static func testCurrentStateMatrix() {

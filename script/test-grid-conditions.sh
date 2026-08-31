@@ -12,6 +12,7 @@ sdk_path="$(DEVELOPER_DIR="$developer_dir" xcrun --sdk macosx --show-sdk-path)"
   -parse-as-library \
   -sdk "$sdk_path" \
   -module-cache-path "$test_output/ModuleCache" \
+  "$repo_root/Shared/WidgetDataStore.swift" \
   "$repo_root/Shared/SpotPriceCore.swift" \
   "$repo_root/Shared/FinlandTime.swift" \
   "$repo_root/Shared/GridEmissionsCore.swift" \

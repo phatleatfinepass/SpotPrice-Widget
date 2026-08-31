@@ -605,9 +605,13 @@ struct GridEmissionsRepository {
 
 struct GridEmissionsCache {
     private let defaults: UserDefaults
-    private let key = "finland-grid-emissions-cache-v2"
+    private let key = WidgetDataStore.gridEmissionsCacheKey
 
-    init(defaults: UserDefaults = .standard) {
+    init() {
+        self.defaults = WidgetDataStore.defaults(preparing: WidgetDataStore.gridEmissionsCacheKey)
+    }
+
+    init(defaults: UserDefaults) {
         self.defaults = defaults
     }
 

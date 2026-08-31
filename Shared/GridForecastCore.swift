@@ -678,9 +678,13 @@ struct GridForecastRepository {
 
 struct GridForecastCache {
     private let defaults: UserDefaults
-    private let key = "finland-grid-forecast-cache-v1"
+    private let key = WidgetDataStore.gridForecastCacheKey
 
-    init(defaults: UserDefaults = .standard) {
+    init() {
+        self.defaults = WidgetDataStore.defaults(preparing: WidgetDataStore.gridForecastCacheKey)
+    }
+
+    init(defaults: UserDefaults) {
         self.defaults = defaults
     }
 

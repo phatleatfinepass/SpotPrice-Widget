@@ -2,6 +2,9 @@ import Charts
 import Combine
 import SwiftUI
 import WidgetKit
+#if DEBUG && os(macOS)
+import AppKit
+#endif
 
 @MainActor
 final class SpotPriceViewModel: ObservableObject {
@@ -41,6 +44,19 @@ final class SpotPriceViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+
+    func resetWidgetData() async {
+        guard !isLoading else { return }
+
+        WidgetDataStore.resetCaches()
+#if os(macOS)
+        SoftwareUpdateService.clearDownloadedInstallers()
+#endif
+        presentation = nil
+        errorMessage = nil
+        WidgetCenter.shared.reloadAllTimelines()
+        await refresh()
+    }
 }
 
 struct ContentView: View {
@@ -48,33 +64,39 @@ struct ContentView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if let presentation = model.presentation {
-                    ScrollView {
-                        VStack(spacing: 18) {
-                            if let errorMessage = model.errorMessage {
-                                StalePriceBanner(message: errorMessage)
-                            }
-
-                            CurrentRateCard(presentation: presentation)
-                            UpcomingPriceSection(presentation: presentation)
+            ScrollView {
+                VStack(spacing: 18) {
+                    if let presentation = model.presentation {
+                        if let errorMessage = model.errorMessage {
+                            StalePriceBanner(message: errorMessage)
                         }
-                        .frame(maxWidth: 760)
-                        .padding(20)
-                        .frame(maxWidth: .infinity)
+
+                        CurrentRateCard(presentation: presentation)
+                        UpcomingPriceSection(presentation: presentation)
+                    } else if let errorMessage = model.errorMessage {
+                        ContentUnavailableView(
+                            "Prices unavailable",
+                            systemImage: "bolt.trianglebadge.exclamationmark",
+                            description: Text(errorMessage)
+                        )
+                        .frame(maxWidth: .infinity, minHeight: 260)
+                    } else {
+                        ProgressView("Loading Finland prices…")
+                            .frame(maxWidth: .infinity, minHeight: 260)
                     }
-                    .refreshable { await model.refresh() }
-                } else if let errorMessage = model.errorMessage {
-                    ContentUnavailableView(
-                        "Prices unavailable",
-                        systemImage: "bolt.trianglebadge.exclamationmark",
-                        description: Text(errorMessage)
+
+#if os(macOS)
+                    ProductManagementSections(
+                        resetDisabled: model.isLoading,
+                        onReset: { await model.resetWidgetData() }
                     )
-                } else {
-                    ProgressView("Loading Finland prices…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+#endif
                 }
+                .frame(maxWidth: 760)
+                .padding(20)
+                .frame(maxWidth: .infinity)
             }
+            .refreshable { await model.refresh() }
             .navigationTitle("Electricity Rates")
             .toolbar {
                 ToolbarItem {
@@ -92,8 +114,32 @@ struct ContentView: View {
                 }
             }
         }
-        .task { await model.loadIfNeeded() }
+        .task {
+#if DEBUG && os(macOS)
+            if await runUninstallIntegrationTestIfRequested() {
+                return
+            }
+#endif
+            await model.loadIfNeeded()
+        }
     }
+
+#if DEBUG && os(macOS)
+    private func runUninstallIntegrationTestIfRequested() async -> Bool {
+        guard ProcessInfo.processInfo.environment["SPOTPRICE_TEST_UNINSTALL"] == "1" else {
+            return false
+        }
+
+        do {
+            let destinationURL = try await ProductUninstallerClient.moveContainingAppToTrash()
+            FileHandle.standardOutput.write(Data("UNINSTALL_DESTINATION=\(destinationURL.path)\n".utf8))
+        } catch {
+            FileHandle.standardError.write(Data("UNINSTALL_ERROR=\(error.localizedDescription)\n".utf8))
+        }
+        NSApplication.shared.terminate(nil)
+        return true
+    }
+#endif
 }
 
 private struct CurrentRateCard: View {

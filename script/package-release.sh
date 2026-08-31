@@ -30,7 +30,7 @@ case "$output_dir" in
   ""|"/") fail "refusing unsafe output directory: '$output_dir'" ;;
 esac
 
-for command_name in xcodebuild codesign ditto hdiutil shasum plutil; do
+for command_name in xcodebuild codesign ditto hdiutil lipo shasum plutil; do
   command -v "$command_name" >/dev/null 2>&1 \
     || fail "required command is missing: $command_name"
 done
@@ -68,6 +68,8 @@ staged_app="$stage_dir/Finland Electricity Rates.app"
 built_app="$derived_data/Build/Products/Release/Finland Electricity Rates.app"
 built_extension="$built_app/Contents/PlugIns/SpotPriceWidgetFinlandExtension.appex"
 staged_extension="$staged_app/Contents/PlugIns/SpotPriceWidgetFinlandExtension.appex"
+built_uninstaller="$built_app/Contents/XPCServices/SpotPriceWidgetUninstaller.xpc"
+staged_uninstaller="$staged_app/Contents/XPCServices/SpotPriceWidgetUninstaller.xpc"
 artifact_name="Finland-Electricity-Rates.dmg"
 approved_relay_url="https://finland-grid-emissions-relay.phat-le.workers.dev/v1/finland/emissions/current"
 
@@ -84,14 +86,27 @@ xcodebuild -quiet \
   MARKETING_VERSION="$version" \
   build
 
-[[ -d "$built_app" && -d "$built_extension" ]] \
-  || fail "build completed without the expected app and widget extension"
+[[ -d "$built_app" && -d "$built_extension" && -d "$built_uninstaller" ]] \
+  || fail "build completed without the expected app, widget extension, and uninstall helper"
 [[ "$(plutil -extract CFBundleName raw "$built_app/Contents/Info.plist")" == "Finland Electricity Rates" ]] \
   || fail "built app has the wrong bundle name"
 [[ "$(plutil -extract CFBundleDisplayName raw "$built_extension/Contents/Info.plist")" == "Finland Electricity Rates" ]] \
   || fail "built widget extension has the wrong display name"
 [[ -f "$built_app/Contents/Resources/AppIcon.icns" ]] \
   || fail "built app does not contain AppIcon.icns"
+
+require_universal_binary() {
+  local executable_path="$1"
+  local label="$2"
+  local architectures
+  architectures="$(lipo -archs "$executable_path")"
+  [[ " $architectures " == *" arm64 "* && " $architectures " == *" x86_64 "* ]] \
+    || fail "$label is not universal (found: $architectures)"
+}
+
+require_universal_binary "$built_app/Contents/MacOS/SpotPriceWidget" "host app"
+require_universal_binary "$built_extension/Contents/MacOS/SpotPriceWidgetFinlandExtension" "widget extension"
+require_universal_binary "$built_uninstaller/Contents/MacOS/SpotPriceWidgetUninstaller" "uninstall helper"
 
 embedded_fingrid_key="$(plutil -extract FingridAPIKey raw "$built_extension/Contents/Info.plist" 2>/dev/null || true)"
 [[ -z "$embedded_fingrid_key" || "$embedded_fingrid_key" == '$(FINGRID_API_KEY)' ]] \
@@ -110,22 +125,63 @@ if [[ "$distribution" == "direct" ]]; then
   ditto "$repo_root/docs/DIRECT-DISTRIBUTION.txt" "$stage_dir/READ ME — First Launch.txt"
   printf 'Applying ad hoc signatures for free direct distribution…\n'
   codesign --force --sign - --options runtime \
+    --identifier personal.SpotPriceWidget.Uninstaller \
+    "$staged_uninstaller" >/dev/null
+  codesign --force --sign - --options runtime \
+    --identifier personal.SpotPriceWidget.SpotPriceWidgetFinland \
     --entitlements "$repo_root/SpotPriceWidgetFinland/SpotPriceWidgetFinland.entitlements" \
     "$staged_extension" >/dev/null
   codesign --force --sign - --options runtime \
+    --identifier personal.SpotPriceWidget \
     --entitlements "$repo_root/SpotPriceWidget/SpotPriceWidget.entitlements" \
     "$staged_app" >/dev/null
 else
-  printf 'Signing the widget extension and app with Developer ID…\n'
+  printf 'Signing the uninstall helper, widget extension, and app with Developer ID…\n'
   codesign --force --sign "$signing_identity" "${codesign_keychain_args[@]}" --options runtime --timestamp \
+    --identifier personal.SpotPriceWidget.Uninstaller \
+    "$staged_uninstaller" >/dev/null
+  codesign --force --sign "$signing_identity" "${codesign_keychain_args[@]}" --options runtime --timestamp \
+    --identifier personal.SpotPriceWidget.SpotPriceWidgetFinland \
     --entitlements "$repo_root/SpotPriceWidgetFinland/SpotPriceWidgetFinland.entitlements" \
     "$staged_extension" >/dev/null
   codesign --force --sign "$signing_identity" "${codesign_keychain_args[@]}" --options runtime --timestamp \
+    --identifier personal.SpotPriceWidget \
     --entitlements "$repo_root/SpotPriceWidget/SpotPriceWidget.entitlements" \
     "$staged_app" >/dev/null
 fi
 
 codesign --verify --deep --strict "$staged_app"
+
+require_identifier() {
+  local bundle_path="$1"
+  local expected_identifier="$2"
+  local actual_identifier
+  actual_identifier="$(codesign -dvv "$bundle_path" 2>&1 | awk -F= '/^Identifier=/{ print $2; exit }')"
+  [[ "$actual_identifier" == "$expected_identifier" ]] \
+    || fail "wrong signing identifier for $bundle_path (found: $actual_identifier)"
+}
+
+require_sandbox_entitlement() {
+  local bundle_path="$1"
+  local label="$2"
+  local entitlement_file="$work_dir/$(printf '%s' "$label" | tr ' ' '-').entitlements.plist"
+  codesign -d --entitlements :- "$bundle_path" >"$entitlement_file" 2>/dev/null
+  [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.app-sandbox' "$entitlement_file" 2>/dev/null || true)" == "true" ]] \
+    || fail "$label must remain sandboxed"
+}
+
+require_identifier "$staged_app" personal.SpotPriceWidget
+require_identifier "$staged_extension" personal.SpotPriceWidget.SpotPriceWidgetFinland
+require_identifier "$staged_uninstaller" personal.SpotPriceWidget.Uninstaller
+require_sandbox_entitlement "$staged_app" "host app"
+require_sandbox_entitlement "$staged_extension" "widget extension"
+
+uninstaller_entitlements="$work_dir/uninstaller.entitlements.plist"
+codesign -d --entitlements :- "$staged_uninstaller" >"$uninstaller_entitlements" 2>/dev/null || true
+if [[ -s "$uninstaller_entitlements" ]] && \
+   [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.app-sandbox' "$uninstaller_entitlements" 2>/dev/null || true)" == "true" ]]; then
+  fail "the narrowly scoped uninstall helper must run outside the app sandbox"
+fi
 
 notary_submit() {
   local artifact="$1"

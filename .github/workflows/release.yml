@@ -83,6 +83,28 @@ jobs:
       - name: Test Grid Conditions signal
         run: script/test-grid-conditions.sh
 
+      - name: Test product maintenance safeguards
+        run: script/test-product-maintenance.sh
+
+      - name: Test uninstall helper target resolution
+        run: script/test-uninstaller-target.sh
+
+      - name: Test software update logic
+        run: script/test-software-update.sh
+
+      - name: Build disposable uninstall test bundle
+        run: |
+          xcodebuild -quiet \
+            -project SpotPriceWidget.xcodeproj \
+            -scheme SpotPriceWidget \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            -derivedDataPath '${{ runner.temp }}/UninstallTestDerivedData' \
+            build
+
+      - name: Exercise embedded uninstall helper
+        run: script/test-uninstaller-integration.sh '${{ runner.temp }}/UninstallTestDerivedData/Build/Products/Debug/Finland Electricity Rates.app'
+
       - name: Build, ad-hoc sign, and package
         env:
           SPOT_PRICE_DISTRIBUTION: direct

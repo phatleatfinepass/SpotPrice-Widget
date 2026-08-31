@@ -37,6 +37,8 @@ curl -fsSL https://raw.githubusercontent.com/phatleatfinepass/SpotPrice-Widget/s
 
 The installer downloads the latest direct release, verifies its published SHA-256 checksum and embedded code-signature integrity, installs it in `~/Applications`, registers the widget extension, and opens the app. It does not use `sudo`, bypass Gatekeeper, or ask for an API key. See [the install guide](docs/INSTALL.md) for first-launch approval, options, and source-building steps.
 
+The macOS app also includes **Software Update** and **Danger Zone** sections. Software Update checks the official GitHub release, verifies the downloaded disk image against its published SHA-256 checksum, and opens it for installation. Danger Zone can clear rebuildable app data and request fresh widget timelines. Uninstall requires confirmation, moves only the currently running app to the Trash, and closes it; there is no file picker or manual deletion step.
+
 After installation, open the macOS widget gallery and search for **Finland Electricity Rates**.
 
 ## Data and privacy

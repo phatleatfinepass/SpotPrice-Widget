@@ -15,3 +15,12 @@ Only approve an app you downloaded from the official project release page:
 https://github.com/phatleatfinepass/SpotPrice-Widget/releases
 
 The project never asks you to disable Gatekeeper or remove quarantine.
+
+MANAGE
+
+Use Software Update in the app to check the official GitHub release, verify
+its disk-image checksum, and open the installer. Use Danger Zone only when
+you intend to reset rebuildable app data or move the app to the Trash.
+Uninstall asks for confirmation, then a narrowly scoped embedded service moves
+only the currently running app to the Trash and closes it. No file picker or
+manual deletion step is required.

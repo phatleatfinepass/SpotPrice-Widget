@@ -74,7 +74,21 @@ jobs:
         if: matrix.name == 'macOS'
         run: script/test-grid-conditions.sh
 
+      - name: Test product maintenance safeguards
+        if: matrix.name == 'macOS'
+        run: script/test-product-maintenance.sh
+
+      - name: Test uninstall helper target resolution
+        if: matrix.name == 'macOS'
+        run: script/test-uninstaller-target.sh
+
+      - name: Test software update logic
+        if: matrix.name == 'macOS'
+        run: script/test-software-update.sh
+
       - name: Build
+        env:
+          CODE_SIGNING_ALLOWED_FOR_PLATFORM: ${{ matrix.name == 'macOS' && 'YES' || 'NO' }}
         run: |
           xcodebuild -quiet \
             -project SpotPriceWidget.xcodeproj \
@@ -82,5 +96,9 @@ jobs:
             -configuration Debug \
             -destination '${{ matrix.destination }}' \
             -derivedDataPath '${{ runner.temp }}/DerivedData-${{ matrix.name }}' \
-            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_ALLOWED="$CODE_SIGNING_ALLOWED_FOR_PLATFORM" \
             build
+
+      - name: Exercise embedded uninstall helper
+        if: matrix.name == 'macOS'
+        run: script/test-uninstaller-integration.sh '${{ runner.temp }}/DerivedData-macOS/Build/Products/Debug/Finland Electricity Rates.app'
