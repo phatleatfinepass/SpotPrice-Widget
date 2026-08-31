@@ -4,7 +4,7 @@ import Foundation
 struct SoftwareUpdateLogicTests {
     static func main() {
         testPinnedPublicKey()
-        testBridgeVersionOrdering()
+        testAutomaticUpdateVersionOrdering()
         testProductionEndpoint()
         testProofEndpointIsNarrowlyScoped()
         testOriginPolicy()
@@ -17,12 +17,18 @@ struct SoftwareUpdateLogicTests {
         expect(key?.count == 32, "The pinned Ed25519 public key must contain exactly 32 bytes.")
     }
 
-    private static func testBridgeVersionOrdering() {
-        let installed = ReleaseVersion("1.2.1")
-        let bridge = ReleaseVersion("v1.2.2")
-        expect(installed != nil && bridge != nil, "Bridge versions must parse.")
-        expect(installed! < bridge!, "An installed 1.2.1 app must discover the 1.2.2 bridge.")
-        expect(bridge!.description == "1.2.2", "A tagged bridge version must normalize for installation.")
+    private static func testAutomaticUpdateVersionOrdering() {
+        let installedBridge = ReleaseVersion("1.2.2")
+        let automaticUpdate = ReleaseVersion("v1.2.3")
+        expect(installedBridge != nil && automaticUpdate != nil, "Automatic-update versions must parse.")
+        expect(
+            installedBridge! < automaticUpdate!,
+            "An installed 1.2.2 bridge must discover the 1.2.3 automatic update."
+        )
+        expect(
+            automaticUpdate!.description == "1.2.3",
+            "A tagged automatic-update version must normalize for installation."
+        )
         expect(ReleaseVersion("1.2") == nil, "Incomplete versions must be rejected.")
     }
 

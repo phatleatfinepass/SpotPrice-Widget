@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.3 - 2026-08-31
+
+### Changed
+
+- Published the first minimal signed update intended to exercise the transactional in-app updater included in the 1.2.2 bridge release.
+- Kept widget presentation, electricity pricing, Grid Conditions, reset, and uninstall behavior unchanged so the upgrade result measures only the update path.
+
+### Verified
+
+- Patch-version ordering explicitly covers automatic discovery from installed version 1.2.2 to signed version 1.2.3.
+- The release workflow validates, packages, signs, and independently verifies the detached Ed25519 update signature before publishing.
+
 ## 1.2.2 - 2026-08-31
 
 ### Changed
