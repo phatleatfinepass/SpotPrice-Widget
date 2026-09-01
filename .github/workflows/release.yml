@@ -106,6 +106,9 @@ jobs:
             ENABLE_DEBUG_DYLIB=NO \
             build
 
+      - name: Exercise widget registration repair
+        run: script/test-widget-registration-integration.sh '${{ runner.temp }}/UninstallTestDerivedData/Build/Products/Debug/Finland Electricity Rates.app'
+
       - name: Exercise embedded uninstall helper
         run: script/test-uninstaller-integration.sh '${{ runner.temp }}/UninstallTestDerivedData/Build/Products/Debug/Finland Electricity Rates.app'
 

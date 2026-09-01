@@ -58,6 +58,10 @@ protocol SpotPriceWidgetUninstalling {
         expectedVersion: String,
         withReply reply: @escaping (_ installedVersion: String?, _ errorMessage: String?) -> Void
     )
+
+    func repairWidgetRegistration(
+        withReply reply: @escaping (_ errorMessage: String?) -> Void
+    )
 }
 
 enum ProductUninstallerClientError: LocalizedError {
@@ -110,6 +114,26 @@ enum ProductUpdaterClient {
                 expectedVersion: expectedVersion,
                 continuation: continuation
             )
+            request.start()
+        }
+    }
+}
+
+enum ProductWidgetRegistrationClientError: LocalizedError {
+    case unavailable(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .unavailable(let message):
+            "The widget registration could not be refreshed: \(message)"
+        }
+    }
+}
+
+enum ProductWidgetRegistrationClient {
+    static func repair() async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            let request = ProductWidgetRegistrationRequest(continuation: continuation)
             request.start()
         }
     }
@@ -213,6 +237,55 @@ private final class ProductUninstallerRequest: @unchecked Sendable {
     }
 
     private func finish(_ result: Result<URL, Error>) {
+        lock.lock()
+        guard let continuation else {
+            lock.unlock()
+            return
+        }
+        self.continuation = nil
+        let connection = self.connection
+        self.connection = nil
+        lock.unlock()
+
+        connection?.invalidate()
+        continuation.resume(with: result)
+    }
+}
+
+private final class ProductWidgetRegistrationRequest: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Void, Error>?
+    private var connection: NSXPCConnection?
+
+    init(continuation: CheckedContinuation<Void, Error>) {
+        self.continuation = continuation
+    }
+
+    func start() {
+        let connection = NSXPCConnection(serviceName: ProductUninstallValidator.serviceName)
+        self.connection = connection
+        connection.remoteObjectInterface = NSXPCInterface(with: SpotPriceWidgetUninstalling.self)
+        connection.resume()
+
+        guard let proxy = connection.remoteObjectProxyWithErrorHandler({ [self] error in
+            finish(.failure(ProductWidgetRegistrationClientError.unavailable(error.localizedDescription)))
+        }) as? SpotPriceWidgetUninstalling else {
+            finish(.failure(ProductWidgetRegistrationClientError.unavailable(
+                "The helper connection could not be created."
+            )))
+            return
+        }
+
+        proxy.repairWidgetRegistration { [self] errorMessage in
+            if let errorMessage, !errorMessage.isEmpty {
+                finish(.failure(ProductWidgetRegistrationClientError.unavailable(errorMessage)))
+            } else {
+                finish(.success(()))
+            }
+        }
+    }
+
+    private func finish(_ result: Result<Void, Error>) {
         lock.lock()
         guard let continuation else {
             lock.unlock()

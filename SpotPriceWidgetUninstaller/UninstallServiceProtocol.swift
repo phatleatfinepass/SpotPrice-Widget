@@ -12,4 +12,8 @@ protocol SpotPriceWidgetUninstalling {
         expectedVersion: String,
         withReply reply: @escaping (_ installedVersion: String?, _ errorMessage: String?) -> Void
     )
+
+    func repairWidgetRegistration(
+        withReply reply: @escaping (_ errorMessage: String?) -> Void
+    )
 }

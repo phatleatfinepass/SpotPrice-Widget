@@ -105,6 +105,10 @@ jobs:
             ENABLE_DEBUG_DYLIB="$DEBUG_DYLIB_FOR_PLATFORM" \
             build
 
+      - name: Exercise widget registration repair
+        if: matrix.name == 'macOS'
+        run: script/test-widget-registration-integration.sh '${{ runner.temp }}/DerivedData-macOS/Build/Products/Debug/Finland Electricity Rates.app'
+
       - name: Exercise embedded uninstall helper
         if: matrix.name == 'macOS'
         run: script/test-uninstaller-integration.sh '${{ runner.temp }}/DerivedData-macOS/Build/Products/Debug/Finland Electricity Rates.app'

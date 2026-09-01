@@ -1,14 +1,16 @@
-# Finland Electricity Rates 1.2.4
+# Finland Electricity Rates 1.2.5
 
-Version 1.2.4 introduces the full native macOS dashboard while preserving the glanceable Electricity Rates and Grid Conditions widgets.
+Version 1.2.5 fixes the automatic-update handoff and restores the WidgetKit provider when macOS retains an older or competing registration.
 
-The app now opens with a live overview of the current VAT-inclusive spot price and Fingrid emissions value, a proportional daily price-range gauge, and the best upcoming window that balances low price with renewable availability. The Electricity Prices card provides a working Today/Tomorrow selector, fully rounded hourly bars, negative-price support, and visible daily extrema. The hourly table adds renewable share and a concise recommendation for each available hour.
+The updater now verifies and stages the complete signed replacement before asking the running app to quit. Its authenticated maintenance helper waits for that exact host process to exit, replaces the bundle transactionally, refreshes Launch Services and WidgetKit, launches one new app instance, and verifies both the new process and the installed widget path before removing the rollback copy. If replacement, registration, or launch fails, the previous app and widget registration are restored together.
 
-Grid Conditions now presents two distinct Apple Charts views instead of combining unrelated units on one normalized plot. **Forecast** shows renewable share for the next 24 hours as a percentage area-and-line chart. **History** shows measured grid emissions for the past 24 hours as gCO₂/kWh bars when direct historical data is available. Both views keep a fixed footprint so the dashboard does not jump or resize when data or selection changes.
+The app also asks its narrowly scoped helper to refresh the exact containing app’s widget registration at launch. This lets 1.2.5 repair the widget gallery after an update initiated by the older 1.2.4 helper, without accepting an arbitrary app or filesystem path.
 
-The host app also resolves the public grid-emissions relay bundled with the widget, so the current Fingrid value remains available without exposing an API credential. Release builds do not fabricate emissions history when only the current public measurement is available.
+Because updater behavior executes from the version already installed, the one-time 1.2.4 → 1.2.5 bridge may still display the earlier close-and-relaunch sequence. Once 1.2.5 is installed, later signed updates use the corrected quit-before-replace flow.
 
-The signed transactional updater remains unchanged. It verifies the detached Ed25519 signature, exact bundle identifier, newer version, and complete nested code-signature tree before replacing the installed app, with rollback retained until the new process remains alive.
+Dashboard presentation, electricity-price thresholds, Fingrid emissions, renewable forecasts, reset, and uninstall behavior are unchanged.
+
+The release gate now tests host-exit ordering and timeout behavior, PluginKit path parsing, launch-time registration repair through the real signed XPC boundary, the existing uninstall integration, and the complete macOS product build.
 
 The release supports macOS 26.5 or later on Apple silicon and Intel Macs. It is a free direct release: the bundles are ad-hoc signed for integrity but are not Apple-notarized and do not carry a paid Developer ID identity. A first installation can still require **System Settings → Privacy & Security → Open Anyway**.
 

@@ -25,6 +25,7 @@ for script_path in \
   "$repo_root/script/test-update-handoff.sh" \
   "$repo_root/script/test-uninstaller-integration.sh" \
   "$repo_root/script/test-uninstaller-target.sh" \
+  "$repo_root/script/test-widget-registration-integration.sh" \
   "$repo_root/script/verify-update-signature.sh" \
   "$repo_root/script/verify-grid-emissions-relay.sh"; do
   bash -n "$script_path" || fail "invalid shell syntax in $script_path"
@@ -69,6 +70,7 @@ for required_path in \
   "$repo_root/SpotPriceWidgetUninstaller/WidgetRegistrationPaths.swift" \
   "$repo_root/SpotPriceWidgetUninstaller/main.swift" \
   "$repo_root/script/test-update-handoff.sh" \
+  "$repo_root/script/test-widget-registration-integration.sh" \
   "$repo_root/script/sign-release-update.sh" \
   "$repo_root/script/verify-update-signature.sh" \
   "$repo_root/script/verify-update-signature.swift" \
@@ -136,6 +138,12 @@ grep -Fq 'NSWorkspace.shared.recycle([appURL])' \
 grep -Fq 'func moveContainingAppToTrash(' \
   "$repo_root/SpotPriceWidgetUninstaller/UninstallServiceProtocol.swift" \
   || fail "the helper protocol must expose only its fixed containing-app operation"
+grep -Fq 'func repairWidgetRegistration(' \
+  "$repo_root/SpotPriceWidgetUninstaller/UninstallServiceProtocol.swift" \
+  || fail "the helper protocol must expose an exact containing-app widget repair"
+grep -Fq 'let appURL = try UninstallTarget.validatedAppURL(containingAppURL)' \
+  "$repo_root/SpotPriceWidgetUninstaller/main.swift" \
+  || fail "widget repair must derive its target from the validated containing app"
 grep -Fq 'connection.effectiveUserIdentifier == geteuid()' \
   "$repo_root/SpotPriceWidgetUninstaller/UninstallSecurity.swift" \
   || fail "the helper must reject callers from another user"

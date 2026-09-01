@@ -59,6 +59,18 @@ final class UninstallService: NSObject, SpotPriceWidgetUninstalling {
             lease.end()
         }
     }
+
+    func repairWidgetRegistration(
+        withReply reply: @escaping (String?) -> Void
+    ) {
+        do {
+            let appURL = try UninstallTarget.validatedAppURL(containingAppURL)
+            try UpdateRegistration.register(appURL: appURL)
+            reply(nil)
+        } catch {
+            reply(error.localizedDescription)
+        }
+    }
 }
 
 private final class UpdateTransactionLease {

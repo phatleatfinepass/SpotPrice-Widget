@@ -258,7 +258,7 @@ enum UpdateInstaller {
     }
 }
 
-private enum UpdateRegistration {
+enum UpdateRegistration {
     private static let widgetBundleIdentifier =
         "personal.SpotPriceWidget.SpotPriceWidgetFinland"
     private static let extensionRelativePath =
