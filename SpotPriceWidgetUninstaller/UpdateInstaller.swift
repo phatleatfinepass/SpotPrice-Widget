@@ -161,6 +161,9 @@ enum UpdateInstaller {
 
         do {
             try? UpdateRegistration.unregister(appURL: prepared.currentApp)
+            try await WidgetExtensionLifecycle.terminateRunningExtension(
+                in: prepared.currentApp
+            )
             try fileManager.moveItem(at: prepared.currentApp, to: prepared.backupApp)
             try fileManager.moveItem(at: prepared.stagedApp, to: prepared.currentApp)
         } catch {
@@ -168,6 +171,8 @@ enum UpdateInstaller {
             if fileManager.fileExists(atPath: prepared.backupApp.path),
                !fileManager.fileExists(atPath: prepared.currentApp.path) {
                 try? fileManager.moveItem(at: prepared.backupApp, to: prepared.currentApp)
+            }
+            if fileManager.fileExists(atPath: prepared.currentApp.path) {
                 try? UpdateRegistration.register(appURL: prepared.currentApp)
             }
             throw UpdateInstallError.replacementFailed

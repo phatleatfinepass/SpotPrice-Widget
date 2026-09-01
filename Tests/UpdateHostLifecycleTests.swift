@@ -5,8 +5,73 @@ struct UpdateHostLifecycleTests {
     static func main() async {
         await testWaitsForTheExactProcessToExit()
         await testTimesOutWithoutReplacingWhileTheProcessLives()
+        await testStopsOnlyTheExactWidgetExecutable()
         testPluginKitPathParsing()
         print("Update handoff tests passed.")
+    }
+
+    private static func testStopsOnlyTheExactWidgetExecutable() async {
+        let fileManager = FileManager.default
+        let root = fileManager.temporaryDirectory
+            .appendingPathComponent("spotprice-widget-process-\(UUID().uuidString)", isDirectory: true)
+        let appURL = root.appendingPathComponent("Finland Electricity Rates.app", isDirectory: true)
+        let executableURL = WidgetExtensionLifecycle.expectedExecutableURL(in: appURL)
+        let competingURL = root
+            .appendingPathComponent("Debug", isDirectory: true)
+            .appendingPathComponent("SpotPriceWidgetFinlandExtension")
+
+        do {
+            try fileManager.createDirectory(
+                at: executableURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try fileManager.createDirectory(
+                at: competingURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try fileManager.copyItem(at: URL(fileURLWithPath: "/bin/sleep"), to: executableURL)
+            try fileManager.copyItem(at: URL(fileURLWithPath: "/bin/sleep"), to: competingURL)
+
+            let widgetProcess = Process()
+            widgetProcess.executableURL = executableURL
+            widgetProcess.arguments = ["5"]
+            let competingProcess = Process()
+            competingProcess.executableURL = competingURL
+            competingProcess.arguments = ["5"]
+            try widgetProcess.run()
+            try competingProcess.run()
+            defer {
+                if widgetProcess.isRunning { widgetProcess.terminate() }
+                if competingProcess.isRunning { competingProcess.terminate() }
+                try? fileManager.removeItem(at: root)
+            }
+
+            try await WidgetExtensionLifecycle.terminateRunningExtension(
+                in: appURL,
+                timeout: 1,
+                pollInterval: 0.02
+            )
+            widgetProcess.waitUntilExit()
+
+            expect(
+                !widgetProcess.isRunning,
+                "The exact embedded widget process must stop before replacement."
+            )
+            expect(
+                competingProcess.isRunning,
+                "A process with the same role outside the target app must remain running."
+            )
+            expect(
+                !WidgetExtensionLifecycle.matches(
+                    processExecutablePath: competingURL.path,
+                    expectedExecutableURL: executableURL
+                ),
+                "Widget process matching must use the complete canonical executable path."
+            )
+        } catch {
+            try? fileManager.removeItem(at: root)
+            fail("The widget process handoff failed: \(error.localizedDescription)")
+        }
     }
 
     private static func testWaitsForTheExactProcessToExit() async {

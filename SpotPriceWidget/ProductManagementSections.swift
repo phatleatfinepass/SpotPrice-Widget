@@ -23,9 +23,16 @@ struct ProductManagementSections: View {
                     .padding(22)
 
                 Divider()
-                    .padding(.vertical, 22)
+                    .padding(.vertical, 20)
 
-                appControlsPanel
+                resetPanel
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .padding(22)
+
+                Divider()
+                    .padding(.vertical, 20)
+
+                uninstallPanel
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                     .padding(22)
             }
@@ -62,11 +69,11 @@ struct ProductManagementSections: View {
     }
 
     private var softwareUpdatePanel: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 15) {
             HStack(alignment: .top, spacing: 14) {
-                ManagementIcon(
+                ManagementSymbol(
                     systemImage: "arrow.triangle.2.circlepath",
-                    tint: Color(nsColor: .labelColor).opacity(0.82)
+                    tint: Color(nsColor: .secondaryLabelColor)
                 )
 
                 VStack(alignment: .leading, spacing: 5) {
@@ -75,45 +82,59 @@ struct ProductManagementSections: View {
                     Text("Version \(updates.currentVersionText)")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    updateStatus
-                        .padding(.top, 5)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .frame(height: 42, alignment: .topLeading)
 
-            Spacer(minLength: 12)
+            updateActions
+                .frame(maxWidth: .infinity, alignment: .trailing)
 
-            HStack(spacing: 8) {
-                if updates.availableRelease != nil {
-                    Button("Release Notes") {
-                        updates.openReleasePage()
-                    }
-                    .buttonStyle(.link)
-                    .disabled(updates.isBusy || maintenance.isWorking)
-
-                    Button("Install Update…") {
-                        Task { await updates.installAvailableUpdate() }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(updates.isBusy || maintenance.isWorking)
-                } else {
-                    Button("Check for Updates") {
-                        Task { await updates.checkForUpdates() }
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(updates.isBusy || maintenance.isWorking)
-                }
+            if showsUpdateStatus {
+                updateStatus
             }
-            .controlSize(.regular)
         }
-        .frame(maxWidth: .infinity, minHeight: 196, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 118, alignment: .topLeading)
+    }
+
+    private var showsUpdateStatus: Bool {
+        if case .idle = updates.phase {
+            return false
+        }
+        return true
+    }
+
+    @ViewBuilder
+    private var updateActions: some View {
+        if updates.availableRelease != nil {
+            VStack(alignment: .trailing, spacing: 7) {
+                Button("Install Update…") {
+                    Task { await updates.installAvailableUpdate() }
+                }
+                .buttonStyle(ManagementPrimaryButtonStyle())
+                .disabled(updates.isBusy || maintenance.isWorking)
+
+                Button("Release Notes") {
+                    updates.openReleasePage()
+                }
+                .buttonStyle(.link)
+                .disabled(updates.isBusy || maintenance.isWorking)
+            }
+        } else {
+            Button("Check for Updates") {
+                Task { await updates.checkForUpdates() }
+            }
+            .frame(maxWidth: .infinity)
+            .buttonStyle(ManagementPrimaryButtonStyle())
+            .disabled(updates.isBusy || maintenance.isWorking)
+        }
     }
 
     @ViewBuilder
     private var updateStatus: some View {
         switch updates.phase {
         case .idle:
-            Label("Signed automatic updates", systemImage: "checkmark.shield")
-                .foregroundStyle(.secondary)
+            EmptyView()
         case .checking:
             progressStatus("Checking for updates…")
         case .upToDate:
@@ -145,39 +166,21 @@ struct ProductManagementSections: View {
         .foregroundStyle(.secondary)
     }
 
-    private var appControlsPanel: some View {
-        VStack(alignment: .leading, spacing: 16) {
+    private var resetPanel: some View {
+        VStack(alignment: .leading, spacing: 15) {
             Text("App Controls")
                 .font(.title3.bold())
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .frame(height: 42, alignment: .topLeading)
 
-            HStack(alignment: .top, spacing: 0) {
-                ManagementActionCell(
-                    title: "Reset Data",
-                    detail: "Refresh cached widget values",
-                    systemImage: "arrow.counterclockwise",
-                    tint: Color(nsColor: .labelColor).opacity(0.82),
-                    buttonTitle: "Reset…",
-                    isDestructive: false,
-                    disabled: resetDisabled || maintenance.isWorking || updates.isBusy
-                ) {
-                    pendingDangerAction = .reset
-                }
-
-                Divider()
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 6)
-
-                ManagementActionCell(
-                    title: "Uninstall",
-                    detail: "Remove app and local data",
-                    systemImage: "trash",
-                    tint: .red,
-                    buttonTitle: "Uninstall…",
-                    isDestructive: true,
-                    disabled: maintenance.isWorking || updates.isBusy
-                ) {
-                    pendingDangerAction = .uninstall
-                }
+            ManagementActionCell(
+                detail: "Refresh cached widget values",
+                systemImage: "arrow.counterclockwise",
+                buttonTitle: "Reset",
+                isDestructive: false,
+                disabled: resetDisabled || maintenance.isWorking || updates.isBusy
+            ) {
+                pendingDangerAction = .reset
             }
 
             if let message = maintenance.message {
@@ -189,56 +192,104 @@ struct ProductManagementSections: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 196, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 118, alignment: .topLeading)
+    }
+
+    private var uninstallPanel: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            Color.clear
+                .frame(maxWidth: .infinity)
+                .frame(height: 42)
+                .accessibilityHidden(true)
+
+            ManagementActionCell(
+                detail: "Remove app and local data",
+                systemImage: "trash",
+                buttonTitle: "Uninstall",
+                isDestructive: true,
+                disabled: maintenance.isWorking || updates.isBusy
+            ) {
+                pendingDangerAction = .uninstall
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 118, alignment: .topLeading)
     }
 }
 
-private struct ManagementIcon: View {
+private struct ManagementSymbol: View {
     let systemImage: String
     let tint: Color
 
     var body: some View {
         Image(systemName: systemImage)
-            .font(.system(size: 25, weight: .semibold))
+            .font(.system(size: 30, weight: .semibold))
             .symbolRenderingMode(.hierarchical)
             .foregroundStyle(tint)
-            .frame(width: 48, height: 48)
-            .background(.quaternary.opacity(0.55), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .frame(width: 42, height: 42)
+            .accessibilityHidden(true)
+    }
+}
+
+private struct ManagementPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.body)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity, minHeight: 34)
+            .background {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.accentColor.opacity(configuration.isPressed ? 0.82 : 1))
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .opacity(isEnabled ? 1 : 0.45)
     }
 }
 
 private struct ManagementActionCell: View {
-    let title: String
     let detail: String
     let systemImage: String
-    let tint: Color
     let buttonTitle: String
     let isDestructive: Bool
     let disabled: Bool
     let action: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                ManagementIcon(systemImage: systemImage, tint: tint)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.headline)
-                    Text(detail)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+        VStack(alignment: .leading, spacing: 9) {
+            Button(action: action) {
+                Label(buttonTitle, systemImage: systemImage)
+                    .font(.body)
+                    .foregroundStyle(isDestructive ? Color.red : Color(nsColor: .labelColor))
+                    .padding(.horizontal, 14)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 34)
+                    .background(.clear)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .strokeBorder(
+                                isDestructive
+                                    ? Color.red.opacity(0.82)
+                                    : Color(nsColor: .separatorColor).opacity(0.9),
+                                lineWidth: 1
+                            )
+                    }
+                    .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
+            .buttonStyle(.plain)
+            .opacity(disabled ? 0.45 : 1)
+            .disabled(disabled)
+            .accessibilityHint(detail)
 
-            Spacer(minLength: 8)
-
-            Button(buttonTitle, role: isDestructive ? .destructive : nil, action: action)
-                .buttonStyle(.bordered)
-                .disabled(disabled)
+            Text(detail)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, minHeight: 146, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }
 

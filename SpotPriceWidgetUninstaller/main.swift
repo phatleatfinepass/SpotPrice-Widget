@@ -63,12 +63,22 @@ final class UninstallService: NSObject, SpotPriceWidgetUninstalling {
     func repairWidgetRegistration(
         withReply reply: @escaping (String?) -> Void
     ) {
-        do {
-            let appURL = try UninstallTarget.validatedAppURL(containingAppURL)
-            try UpdateRegistration.register(appURL: appURL)
-            reply(nil)
-        } catch {
-            reply(error.localizedDescription)
+        restartWidgetRegistration(withReply: reply)
+    }
+
+    func restartWidgetRegistration(
+        withReply reply: @escaping (String?) -> Void
+    ) {
+        Task {
+            do {
+                let appURL = try UninstallTarget.validatedAppURL(containingAppURL)
+                try? UpdateRegistration.unregister(appURL: appURL)
+                try await WidgetExtensionLifecycle.terminateRunningExtension(in: appURL)
+                try UpdateRegistration.register(appURL: appURL)
+                reply(nil)
+            } catch {
+                reply(error.localizedDescription)
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 import SwiftUI
 #if os(macOS)
 import AppKit
+import WidgetKit
 #endif
 
 @main
@@ -61,7 +62,22 @@ private enum ProductStartupMaintenance {
                 return
             }
 #endif
-            try? await ProductWidgetRegistrationClient.repair()
+            // During the bridge update, the previous helper can remain alive
+            // briefly while it verifies the newly launched app. Waiting before
+            // using the new restart selector guarantees this request reaches
+            // the replacement helper rather than the pre-1.2.8 implementation.
+            try? await Task.sleep(for: .seconds(5))
+
+            for attempt in 0..<3 {
+                do {
+                    try await ProductWidgetRegistrationClient.repair()
+                    WidgetCenter.shared.reloadAllTimelines()
+                    return
+                } catch {
+                    guard attempt < 2 else { return }
+                    try? await Task.sleep(for: .seconds(1))
+                }
+            }
         }
     }
 

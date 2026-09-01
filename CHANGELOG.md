@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.2.8 - 2026-09-01
+
+### Changed
+
+- Aligned Check for Updates, Reset, and Uninstall as three equal-width horizontal actions with matching heights, corner geometry, and baselines.
+- Simplified the maintenance labels to **Reset** and **Uninstall**, removed the idle signed-update helper, and retained clear supporting descriptions beneath the controls.
+
+### Fixed
+
+- Automatic updates now stop only the exact resident widget-extension process before replacing the app, preventing WidgetKit from continuing to execute pre-update code from memory.
+- The replacement app uses a delayed, retryable startup handoff to the new maintenance helper, re-registers the embedded extension, and reloads every timeline. This also repairs upgrades initiated by the older 1.2.7 helper.
+- Failed replacement preparation restores the existing widget registration without targeting Debug builds or other app copies.
+
+### Verified
+
+- Exact-process lifecycle tests prove that the embedded widget is stopped while a same-named executable outside the target app remains running.
+- Product validation, update handoff, signed Debug compilation, widget-registration integration, and live timeline refresh checks cover this release.
+
 ## 1.2.7 - 2026-09-01
 
 ### Changed

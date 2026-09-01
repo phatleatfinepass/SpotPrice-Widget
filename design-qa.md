@@ -61,6 +61,72 @@ final result: passed
 
 ---
 
+# App Management — Option 1 Design QA
+
+## Comparison target
+
+- Source visual truth: `/Users/chandler/.codex/generated_images/01a05daf-64e6-74d0-9da8-fdbcd71723df/exec-122c8c6b-5e9e-45f5-9d2c-0e7063503839.png`
+- Current implementation screenshot: `/Users/chandler/code/SpotPriceWidget/design-qa-exact-actions.png`
+- Initial Option 1 implementation screenshot: `/Users/chandler/code/SpotPriceWidget/design-qa-implementation.png`
+- Focused side-by-side comparison: `/Users/chandler/code/SpotPriceWidget/design-qa-comparison.png`
+- Native app viewport: 1151 × 768 pixels; current refinement captured in dark appearance to verify system adaptation
+- Source pixels: 2204 × 713; focused component crop: 1990 × 292
+- Implementation pixels: 1151 × 768; focused component crop: 1100 × 147
+- Density normalization: the source component was scaled to 1100 × 161; the implementation component was captured at 1100 × 147 and vertically padded to 1100 × 161. Both were placed in one 2200 × 161 comparison input.
+- State: version 1.2.8; idle update helper hidden; no update currently discovered; Reset and Uninstall enabled.
+
+## Full-view comparison evidence
+
+The implementation uses the approved Option 1 hierarchy inside the real dashboard: one compact material surface divided into three exact equal-width action columns. The user-directed refinement removes the idle `Signed automatic updates` helper and gives Check for Updates, Reset, and Uninstall identical width, height, corner geometry, and one horizontal baseline. The live app retains its existing `App Management` section heading above the component so the surface remains identifiable within the scrolling master dashboard.
+
+The selected visual is an aspirational standalone component with an almost-white canvas. The implementation intentionally retains the app's system `regularMaterial`, which provides the slightly darker adaptive surface visible throughout the production dashboard and follows macOS light/dark appearance automatically.
+
+## Focused-region comparison evidence
+
+`design-qa-comparison.png` records the normalized Option 1 source and initial verified implementation. The current user-directed refinement is visible in `design-qa-exact-actions.png`: two evenly placed dividers establish three equal columns; the App Controls heading, pixel-aligned button outlines, prominent blue update action, neutral Reset outline, semantic red Uninstall outline, and descriptions directly beneath their controls all remain clear.
+
+## Required fidelity surfaces
+
+- Fonts and typography: Native San Francisco system styles are used throughout. `title3.bold`, `subheadline`, and native button/body text preserve the hierarchy without truncation. The live window's smaller viewport explains the denser apparent scale relative to the conceptual source.
+- Spacing and layout rhythm: All three columns receive 22-point insets and equal flexible width. Matching 42-point header rows place Check for Updates, Reset, and Uninstall on one shared horizontal baseline. Every action fills its column and uses the same 34-point height and 8-point continuous corner radius.
+- Colors and visual tokens: The surface remains system-adaptive material; update is the native accent-blue primary action; Reset uses label/separator colors; Uninstall uses semantic red. Disabled opacity is explicit and does not affect the verified enabled state.
+- Image quality and asset fidelity: All visible icons are native SF Symbols (`arrow.triangle.2.circlepath`, `arrow.counterclockwise`, and `trash`) rendered as vectors. No raster substitution, custom glyph, or approximate drawing is used.
+- Copy and content: The idle signed-update helper is intentionally removed. The controls use the simplified labels `Reset` and `Uninstall`; version, maintenance descriptions, and the Check for Updates label remain. Existing update-available, progress, success, and failure states remain intact.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain.
+
+### Accepted constraints
+
+- The real dashboard includes the `App Management` section title above the selected standalone component; removing it would weaken the master screen's information hierarchy.
+- System materials and actual window density produce a slightly darker, denser result than the ImageGen concept. This is intentional platform fidelity rather than design drift.
+- Release Notes and Install Update appear only after an update is discovered, so they are absent from this idle-state capture.
+
+## Comparison history
+
+1. The first rendered pass exposed a P2 control-affordance mismatch: the native bordered maintenance controls appeared as gray filled pills and made Reset look disabled. The button treatment was replaced with accessible plain SwiftUI buttons containing explicit system-color outlines.
+2. The initial QA process also found two app copies with the same bundle identifier running simultaneously, which could make the capture stale. Both host processes were closed and only `/Users/chandler/code/SpotPriceWidget/DerivedData/Build/Products/Debug/Finland Electricity Rates.app` was relaunched before the final capture.
+3. Post-fix visual evidence is `/Users/chandler/code/SpotPriceWidget/design-qa-implementation.png`; the normalized source-versus-implementation evidence is `/Users/chandler/code/SpotPriceWidget/design-qa-comparison.png`. The final pass found no actionable P0/P1/P2 mismatch.
+4. The user removed the idle signed-update helper, simplified the labels to `Reset` and `Uninstall`, and requested one horizontal action baseline. Matching header-row heights now align all three controls; post-refinement evidence is `/Users/chandler/code/SpotPriceWidget/design-qa-aligned-actions.png`.
+5. A subsequent live screenshot showed that the 50/50 parent split still made the update action narrower than the two maintenance controls. The final layout uses three equal-width, top-aligned columns and full-width controls; verified evidence is `/Users/chandler/code/SpotPriceWidget/design-qa-equal-actions.png`.
+6. The equal-column pass still allowed the Reset panel to center within a minimum-height frame and the transparent Uninstall header to grow. All three header rows are now fixed at 42 points and all three panels use top-leading alignment; exact-outline evidence is `/Users/chandler/code/SpotPriceWidget/design-qa-exact-actions.png`.
+
+## Interaction and build verification
+
+- [x] Native Debug build succeeds through `./script/build_and_run.sh`.
+- [x] The verified running executable is the freshly built Debug app.
+- [x] Accessibility exposes Check for Updates, Reset, and Uninstall as buttons.
+- [x] Reset and Uninstall expose their descriptions as accessibility help.
+- [x] Product metadata and release-script validation passes.
+- [x] Product maintenance logic tests pass.
+- [x] Software update trust tests pass.
+- [x] Destructive actions were not activated during visual QA; their existing confirmation and helper flows remain covered by product-maintenance validation.
+
+final result: passed
+
+---
+
 # Master Dashboard — First-Trial Design QA
 
 ## Comparison target

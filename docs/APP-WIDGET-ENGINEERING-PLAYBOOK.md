@@ -109,6 +109,7 @@ discover
   → current host terminates
   → helper waits for that authenticated caller PID to exit
   → unregister old host and widget
+  → stop the exact resident widget-extension executable
   → move old app to a transaction backup
   → move staged app to the canonical path
   → register the new host and exact embedded widget
@@ -117,9 +118,9 @@ discover
   → remove backup
 ```
 
-`SpotPriceWidget/SoftwareUpdateService.swift` owns discovery, download, host-side verification, and host termination. `SpotPriceWidgetUninstaller/UpdateInstaller.swift` owns prepare, commit, rollback, registration, and relaunch. `UpdateHostLifecycle.swift` waits for the exact XPC caller PID. The helper disables sudden and automatic termination while a prepared transaction is outstanding.
+`SpotPriceWidget/SoftwareUpdateService.swift` owns discovery, download, host-side verification, and host termination. `SpotPriceWidgetUninstaller/UpdateInstaller.swift` owns prepare, commit, rollback, registration, and relaunch. `UpdateHostLifecycle.swift` waits for the exact XPC caller PID. `WidgetExtensionLifecycle.swift` enumerates same-user processes and stops only the complete canonical executable path embedded in the validated app. The helper disables sudden and automatic termination while a prepared transaction is outstanding.
 
-This order is an invariant. Launching the replacement before the old process exits creates two app instances and lets macOS resolve the wrong bundle or widget extension. Deleting the old app before the replacement is staged and verified removes the rollback boundary.
+This order is an invariant. Launching the replacement before the old process exits creates two app instances and lets macOS resolve the wrong bundle or widget extension. Replacing the bundle without stopping its resident WidgetKit process can leave macOS executing pre-update code from memory even though the on-disk extension is current. Deleting the old app before the replacement is staged and verified removes the rollback boundary.
 
 ### Rollback is part of installation
 
@@ -138,7 +139,7 @@ The currently installed app executes the updater. Therefore, a release that fixe
 1. verify `N → N+1` delivers the new updater safely enough;
 2. verify `N+1 → N+2` exercises the new behavior end to end.
 
-Version 1.2.2 was the signed transactional-updater bridge. Version 1.2.5 added the clean process handoff and launch-time widget-registration repair. Future updater work must retain an explicit bridge test instead of assuming the new code controls the incoming update.
+Version 1.2.2 was the signed transactional-updater bridge. Version 1.2.5 added the clean host-process handoff and launch-time widget-registration repair. Version 1.2.8 adds exact widget-process termination. Because 1.2.7's helper installs 1.2.8, the replacement host waits for that incoming transaction to finish, calls a new restart selector, retries if the old helper still owns the service, then reloads every timeline. Future updater work must retain an explicit bridge test instead of assuming the new code controls the incoming update.
 
 ### Release gates
 
@@ -208,10 +209,12 @@ The registered path must be the exact extension inside the canonical installed a
 The maintenance helper repairs registration by:
 
 1. validating the exact containing app and widget identifiers;
-2. removing competing registrations for the same widget identifier;
-3. registering the host with `lsregister -f -R`;
-4. registering the embedded extension with `pluginkit -a`;
-5. polling until PluginKit reports the canonical extension path.
+2. unregistering the current extension path;
+3. stopping only the resident process whose canonical executable path matches that embedded extension;
+4. removing competing registrations for the same widget identifier;
+5. registering the host with `lsregister -f -R`;
+6. registering the embedded extension with `pluginkit -a`;
+7. polling until PluginKit reports the canonical extension path.
 
 Registration repair begins in `SpotPriceWidgetApp.init`, not in a view's `.task`. macOS may restore the application without constructing a visible SwiftUI window, so product maintenance that depends on a view appearing is not reliable.
 
@@ -271,11 +274,12 @@ The extension currently has no independently compiled shipping icon. Adding a se
 | A packaged widget should remain selectable after an update. | The widget disappeared even though the `.appex` existed and signatures were valid. | PluginKit could still resolve a Debug, temporary, or previous extension path. | Treat exact-path registration and verification as part of install and rollback. Covered by `test-widget-registration-integration.sh`. | Observed |
 | Startup repair in the dashboard should repair registration. | The integration path could launch without constructing that view. | A SwiftUI view task is conditional on view creation; app initialization is not. | Start product maintenance from the app lifecycle. | Observed |
 | Installing a release containing an updater fix should immediately use the new flow. | The incoming update still behaved like the previous version. | The old installed process performs the installation. | Plan bridge releases and prove both `N → N+1` and `N+1 → N+2`. | Observed |
+| Replacing the app bundle should update the visible widgets. | The app reached 1.2.7 while the widget kept rendering older code. | The WidgetKit extension process had remained resident since before several app updates. | Stop only the exact canonical embedded-extension process before replacement and from the new startup repair. Covered by `test-update-handoff.sh` and the registration integration test. | Observed |
 | Supplying icon PNGs should make the gallery logo appear. | Correct-looking source assets could still produce a blank or stale gallery identity. | Registration and caches also participate; the exact original single cause was not isolated. | Verify built `AppIcon.icns` and canonical host/extension registration before changing artwork. | Inferred |
 
-All five lessons are owned by this project. The first four have project regression coverage or direct integration coverage; the icon lesson remains an evidence-backed diagnostic rule rather than a claim that every blank icon has the same cause.
+All six lessons are owned by this project. The first five have project regression coverage or direct integration coverage; the icon lesson remains an evidence-backed diagnostic rule rather than a claim that every blank icon has the same cause.
 
-Adoption status: adopted. Verification status: passing on the 1.2.5 baseline. Regression is passing for update trust, process handoff, product maintenance, and exact-path widget registration. A separate automated regression is not required for the bridge-release rule or icon diagnostic: their repeatable verification is the two-step `N → N+1 → N+2` public update test and inspection of the packaged `AppIcon.icns` plus canonical Launch Services/PluginKit paths.
+Adoption status: adopted. Verification status: passing on the 1.2.8 baseline. Regression is passing for update trust, host and widget process handoff, product maintenance, and exact-path widget registration. A separate automated regression is not required for the bridge-release rule or icon diagnostic: their repeatable verification is the two-step `N → N+1 → N+2` public update test and inspection of the packaged `AppIcon.icns` plus canonical Launch Services/PluginKit paths.
 
 ## Definition of done
 
@@ -286,6 +290,7 @@ Adoption status: adopted. Verification status: passing on the 1.2.5 baseline. Re
 - No provider credential is embedded.
 - DMG, checksum, and detached signature are published from the exact `stable` commit.
 - Update discovery, signature verification, prepare/commit handoff, rollback, relaunch, and bridge behavior are tested.
+- The previous resident widget-extension process is gone before the replacement is registered.
 - Only one new app instance launches and the previous backup is removed after validation.
 
 ### Widget
@@ -310,6 +315,7 @@ Adoption status: adopted. Verification status: passing on the 1.2.5 baseline. Re
 - Update client: `SpotPriceWidget/SoftwareUpdateService.swift`
 - XPC contract: `SpotPriceWidget/ProductMaintenanceLogic.swift`
 - Update transaction: `SpotPriceWidgetUninstaller/UpdateInstaller.swift`
+- Widget process handoff: `SpotPriceWidgetUninstaller/WidgetExtensionLifecycle.swift`
 - Registration parser: `SpotPriceWidgetUninstaller/WidgetRegistrationPaths.swift`
 - Widget bundle: `SpotPriceWidgetFinland/SpotPriceWidgetFinlandBundle.swift`
 - Electricity Rates widget: `SpotPriceWidgetFinland/SpotPriceWidgetFinland.swift`

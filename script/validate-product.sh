@@ -67,6 +67,7 @@ for required_path in \
   "$repo_root/SpotPriceWidgetUninstaller/UpdateHostLifecycle.swift" \
   "$repo_root/SpotPriceWidgetUninstaller/UpdateInstaller.swift" \
   "$repo_root/SpotPriceWidgetUninstaller/UpdateTrust.swift" \
+  "$repo_root/SpotPriceWidgetUninstaller/WidgetExtensionLifecycle.swift" \
   "$repo_root/SpotPriceWidgetUninstaller/WidgetRegistrationPaths.swift" \
   "$repo_root/SpotPriceWidgetUninstaller/main.swift" \
   "$repo_root/script/test-update-handoff.sh" \
@@ -141,6 +142,9 @@ grep -Fq 'func moveContainingAppToTrash(' \
 grep -Fq 'func repairWidgetRegistration(' \
   "$repo_root/SpotPriceWidgetUninstaller/UninstallServiceProtocol.swift" \
   || fail "the helper protocol must expose an exact containing-app widget repair"
+grep -Fq 'func restartWidgetRegistration(' \
+  "$repo_root/SpotPriceWidgetUninstaller/UninstallServiceProtocol.swift" \
+  || fail "the helper protocol must expose a versioned widget-process restart operation"
 grep -Fq 'let appURL = try UninstallTarget.validatedAppURL(containingAppURL)' \
   "$repo_root/SpotPriceWidgetUninstaller/main.swift" \
   || fail "widget repair must derive its target from the validated containing app"
@@ -228,6 +232,15 @@ replacement_line="$(grep -nF 'try fileManager.moveItem(at: prepared.currentApp, 
 grep -Fq 'try UpdateRegistration.register(appURL: prepared.currentApp)' \
   "$repo_root/SpotPriceWidgetUninstaller/UpdateInstaller.swift" \
   || fail "the updater must register the replacement widget before relaunching"
+grep -Fq 'try await WidgetExtensionLifecycle.terminateRunningExtension(' \
+  "$repo_root/SpotPriceWidgetUninstaller/UpdateInstaller.swift" \
+  || fail "the updater must stop the exact old widget process before replacing the app"
+grep -Fq 'proxy.restartWidgetRegistration' \
+  "$repo_root/SpotPriceWidget/ProductMaintenanceLogic.swift" \
+  || fail "the replacement host must call the new widget-process restart operation"
+grep -Fq 'try await WidgetExtensionLifecycle.terminateRunningExtension(in: appURL)' \
+  "$repo_root/SpotPriceWidgetUninstaller/main.swift" \
+  || fail "startup registration repair must stop a widget process left resident by an older updater"
 
 if git -C "$repo_root" grep -En \
   '(spctl[[:space:]]+--master-disable|xattr[[:space:]]+-[a-zA-Z]*d[^[:space:]]*[[:space:]]+com\.apple\.quarantine)' \

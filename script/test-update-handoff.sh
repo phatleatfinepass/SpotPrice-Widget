@@ -13,6 +13,7 @@ sdk_path="$(DEVELOPER_DIR="$developer_dir" xcrun --sdk macosx --show-sdk-path)"
   -sdk "$sdk_path" \
   -module-cache-path "$test_output/ModuleCache" \
   "$repo_root/SpotPriceWidgetUninstaller/UpdateHostLifecycle.swift" \
+  "$repo_root/SpotPriceWidgetUninstaller/WidgetExtensionLifecycle.swift" \
   "$repo_root/SpotPriceWidgetUninstaller/WidgetRegistrationPaths.swift" \
   "$repo_root/Tests/UpdateHostLifecycleTests.swift" \
   -o "$test_output/UpdateHostLifecycleTests"

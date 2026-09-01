@@ -62,6 +62,10 @@ protocol SpotPriceWidgetUninstalling {
     func repairWidgetRegistration(
         withReply reply: @escaping (_ errorMessage: String?) -> Void
     )
+
+    func restartWidgetRegistration(
+        withReply reply: @escaping (_ errorMessage: String?) -> Void
+    )
 }
 
 enum ProductUninstallerClientError: LocalizedError {
@@ -276,7 +280,7 @@ private final class ProductWidgetRegistrationRequest: @unchecked Sendable {
             return
         }
 
-        proxy.repairWidgetRegistration { [self] errorMessage in
+        proxy.restartWidgetRegistration { [self] errorMessage in
             if let errorMessage, !errorMessage.isEmpty {
                 finish(.failure(ProductWidgetRegistrationClientError.unavailable(errorMessage)))
             } else {
