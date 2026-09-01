@@ -13,9 +13,23 @@ struct ProductManagementSections: View {
     let onReset: () async -> Void
 
     var body: some View {
-        VStack(spacing: 18) {
-            softwareUpdateCard
-            dangerZoneCard
+        VStack(alignment: .leading, spacing: 12) {
+            Text("App Management")
+                .font(.title2.bold())
+
+            HStack(alignment: .top, spacing: 0) {
+                softwareUpdatePanel
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .padding(22)
+
+                Divider()
+                    .padding(.vertical, 22)
+
+                appControlsPanel
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .padding(22)
+            }
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         .alert(item: $pendingDangerAction) { action in
             switch action {
@@ -47,60 +61,63 @@ struct ProductManagementSections: View {
         }
     }
 
-    private var softwareUpdateCard: some View {
-        ManagementCard(
-            title: "Software Update",
-            systemImage: "arrow.triangle.2.circlepath",
-            tint: .blue
-        ) {
-            HStack(alignment: .top, spacing: 16) {
+    private var softwareUpdatePanel: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 14) {
+                ManagementIcon(
+                    systemImage: "arrow.triangle.2.circlepath",
+                    tint: Color(nsColor: .labelColor).opacity(0.82)
+                )
+
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Finland Electricity Rates")
-                        .font(.headline)
+                    Text("Software Update")
+                        .font(.title3.bold())
                     Text("Version \(updates.currentVersionText)")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     updateStatus
-                        .padding(.top, 3)
+                        .padding(.top, 5)
                 }
+            }
 
-                Spacer(minLength: 12)
+            Spacer(minLength: 12)
 
-                VStack(alignment: .trailing, spacing: 8) {
-                    Button("Check for Updates…") {
+            HStack(spacing: 8) {
+                if updates.availableRelease != nil {
+                    Button("Release Notes") {
+                        updates.openReleasePage()
+                    }
+                    .buttonStyle(.link)
+                    .disabled(updates.isBusy || maintenance.isWorking)
+
+                    Button("Install Update…") {
+                        Task { await updates.installAvailableUpdate() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(updates.isBusy || maintenance.isWorking)
+                } else {
+                    Button("Check for Updates") {
                         Task { await updates.checkForUpdates() }
                     }
-                    .disabled(updates.isBusy)
-
-                    if updates.availableRelease != nil {
-                        Button("Install Update…") {
-                            Task { await updates.installAvailableUpdate() }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(updates.isBusy)
-
-                        Button("Release Notes") {
-                            updates.openReleasePage()
-                        }
-                        .buttonStyle(.link)
-                        .disabled(updates.isBusy)
-                    }
+                    .buttonStyle(.bordered)
+                    .disabled(updates.isBusy || maintenance.isWorking)
                 }
-                .controlSize(.regular)
             }
+            .controlSize(.regular)
         }
+        .frame(maxWidth: .infinity, minHeight: 196, alignment: .topLeading)
     }
 
     @ViewBuilder
     private var updateStatus: some View {
         switch updates.phase {
         case .idle:
-            Label("Updates are signed and installed in place.", systemImage: "checkmark.shield")
+            Label("Signed automatic updates", systemImage: "checkmark.shield")
                 .foregroundStyle(.secondary)
         case .checking:
             progressStatus("Checking for updates…")
         case .upToDate:
-            Label("You’re up to date.", systemImage: "checkmark.circle.fill")
+            Label("Up to date", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.green)
         case .updateAvailable:
             if let release = updates.availableRelease {
@@ -128,110 +145,100 @@ struct ProductManagementSections: View {
         .foregroundStyle(.secondary)
     }
 
-    private var dangerZoneCard: some View {
-        ManagementCard(
-            title: "Danger Zone",
-            systemImage: "exclamationmark.triangle.fill",
-            tint: .red,
-            showsDangerBorder: true
-        ) {
-            VStack(spacing: 0) {
-                DangerActionRow(
-                    title: "Reset Widget Data",
-                    detail: "Clear app cache, then request fresh widget timelines.",
+    private var appControlsPanel: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("App Controls")
+                .font(.title3.bold())
+
+            HStack(alignment: .top, spacing: 0) {
+                ManagementActionCell(
+                    title: "Reset Data",
+                    detail: "Refresh cached widget values",
+                    systemImage: "arrow.counterclockwise",
+                    tint: Color(nsColor: .labelColor).opacity(0.82),
                     buttonTitle: "Reset…",
-                    disabled: resetDisabled || maintenance.isWorking
+                    isDestructive: false,
+                    disabled: resetDisabled || maintenance.isWorking || updates.isBusy
                 ) {
                     pendingDangerAction = .reset
                 }
 
-                Divider().padding(.vertical, 14)
+                Divider()
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 6)
 
-                DangerActionRow(
+                ManagementActionCell(
                     title: "Uninstall",
-                    detail: "Move this app to the Trash and close it.",
+                    detail: "Remove app and local data",
+                    systemImage: "trash",
+                    tint: .red,
                     buttonTitle: "Uninstall…",
-                    disabled: maintenance.isWorking
+                    isDestructive: true,
+                    disabled: maintenance.isWorking || updates.isBusy
                 ) {
                     pendingDangerAction = .uninstall
                 }
+            }
 
-                if let message = maintenance.message {
-                    Label(message, systemImage: maintenance.messageIsError ? "exclamationmark.circle" : "checkmark.circle")
-                        .font(.caption)
-                        .foregroundStyle(maintenance.messageIsError ? .red : .gray)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, 14)
-                }
+            if let message = maintenance.message {
+                Label(message, systemImage: maintenance.messageIsError ? "exclamationmark.circle" : "checkmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(
+                        maintenance.messageIsError ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary)
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+        .frame(maxWidth: .infinity, minHeight: 196, alignment: .topLeading)
     }
 }
 
-private struct ManagementCard<Content: View>: View {
-    let title: String
+private struct ManagementIcon: View {
     let systemImage: String
     let tint: Color
-    let showsDangerBorder: Bool
-    let content: () -> Content
-
-    init(
-        title: String,
-        systemImage: String,
-        tint: Color,
-        showsDangerBorder: Bool = false,
-        @ViewBuilder content: @escaping () -> Content
-    ) {
-        self.title = title
-        self.systemImage = systemImage
-        self.tint = tint
-        self.showsDangerBorder = showsDangerBorder
-        self.content = content
-    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Label(title, systemImage: systemImage)
-                .font(.title3.bold())
-                .foregroundStyle(showsDangerBorder ? tint : .primary)
-                .symbolRenderingMode(.hierarchical)
-
-            content()
-        }
-        .padding(22)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .overlay {
-            if showsDangerBorder {
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .stroke(tint.opacity(0.28), lineWidth: 1)
-            }
-        }
+        Image(systemName: systemImage)
+            .font(.system(size: 25, weight: .semibold))
+            .symbolRenderingMode(.hierarchical)
+            .foregroundStyle(tint)
+            .frame(width: 48, height: 48)
+            .background(.quaternary.opacity(0.55), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
     }
 }
 
-private struct DangerActionRow: View {
+private struct ManagementActionCell: View {
     let title: String
     let detail: String
+    let systemImage: String
+    let tint: Color
     let buttonTitle: String
+    let isDestructive: Bool
     let disabled: Bool
     let action: () -> Void
 
     var body: some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.headline)
-                Text(detail)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                ManagementIcon(systemImage: systemImage, tint: tint)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.headline)
+                    Text(detail)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
-            Spacer(minLength: 12)
+            Spacer(minLength: 8)
 
-            Button(buttonTitle, role: .destructive, action: action)
+            Button(buttonTitle, role: isDestructive ? .destructive : nil, action: action)
                 .buttonStyle(.bordered)
                 .disabled(disabled)
         }
+        .frame(maxWidth: .infinity, minHeight: 146, alignment: .topLeading)
     }
 }
 
