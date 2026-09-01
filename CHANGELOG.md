@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.7 - 2026-09-01
+
+### Changed
+
+- Redesigned App Management as one horizontal surface with a balanced 50/50 split between Software Update and App Controls.
+- Placed Reset Data and Uninstall side by side without the previous nested danger-zone shell, using only a subtle internal divider.
+- Adopted native SwiftUI material, SF Symbols, standard bordered controls, and the system destructive role for uninstall.
+- Prevented update, reset, and uninstall operations from starting while another maintenance action is in progress.
+
+### Verified
+
+- macOS Debug compilation, product metadata, maintenance logic, updater handoff, update-version logic, and uninstall target tests cover this release.
+
 ## 1.2.6 - 2026-09-01
 
 ### Fixed
