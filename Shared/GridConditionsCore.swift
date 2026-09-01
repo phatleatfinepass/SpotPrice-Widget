@@ -13,6 +13,11 @@ struct GridConditionTimelineRun: Hashable, Identifiable, Sendable {
     var id: Date { start }
 }
 
+struct GridConditionsTimelineTransition: Hashable, Sendable {
+    let date: Date
+    let hasFreshEmissions: Bool
+}
+
 enum GridConditionsSignal {
     static let emissionsValidity: TimeInterval = 30 * 60
 
@@ -36,6 +41,40 @@ enum GridConditionsSignal {
         currentForecastPoint(in: points, at: date)?
             .dateTime
             .addingTimeInterval(slotDuration)
+    }
+
+    static func timelineTransitions(
+        forecastPoints: [GridForecastSignalPoint],
+        emissionsBand: GridEmissionsBand?,
+        emissionsMeasuredAt: Date?,
+        emissionsAreStale: Bool,
+        after date: Date
+    ) -> [GridConditionsTimelineTransition] {
+        var dates: [Date] = []
+
+        if let forecastSlotEnd = currentForecastSlotEnd(in: forecastPoints, at: date),
+           forecastSlotEnd > date {
+            dates.append(forecastSlotEnd)
+        }
+
+        if let emissionsMeasuredAt {
+            let emissionsExpiry = emissionsMeasuredAt.addingTimeInterval(emissionsValidity)
+            if emissionsExpiry > date {
+                dates.append(emissionsExpiry)
+            }
+        }
+
+        return Array(Set(dates)).sorted().map { transitionDate in
+            GridConditionsTimelineTransition(
+                date: transitionDate,
+                hasFreshEmissions: emissionsAreFresh(
+                    band: emissionsBand,
+                    measuredAt: emissionsMeasuredAt,
+                    isStale: emissionsAreStale,
+                    at: transitionDate
+                )
+            )
+        }
     }
 
     static func emissionsAreFresh(

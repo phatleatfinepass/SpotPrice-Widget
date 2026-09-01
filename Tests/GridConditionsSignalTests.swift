@@ -11,6 +11,7 @@ struct GridConditionsSignalTests {
         testFutureHighRendersWithoutLiveEmissions()
         testForecastRunsCoalesceAcrossFutureSlots()
         testPartialCurrentSlotUsesWallClockContainment()
+        testForecastBoundaryDoesNotExpireFreshEmissions()
         testGapDoesNotTreatFallbackAsCurrent()
         testMeasurementCannotColorSuccessiveForecastSlots()
         testLowRenewableWarningRemainsForecastable()
@@ -254,6 +255,36 @@ struct GridConditionsSignalTests {
                 at: now
             ) == slotStart.addingTimeInterval(15 * 60),
             "The safety boundary must be the containing slot's end."
+        )
+    }
+
+    private static func testForecastBoundaryDoesNotExpireFreshEmissions() {
+        let forecastSlotStart = helsinkiDate(month: 9, day: 1, hour: 18)
+            .addingTimeInterval(45 * 60)
+        let now = forecastSlotStart.addingTimeInterval(7 * 60)
+        let measuredAt = forecastSlotStart
+        let forecastSlotEnd = forecastSlotStart.addingTimeInterval(15 * 60)
+        let emissionsExpiry = measuredAt.addingTimeInterval(GridConditionsSignal.emissionsValidity)
+
+        let transitions = GridConditionsSignal.timelineTransitions(
+            forecastPoints: [point(at: forecastSlotStart, state: .average)],
+            emissionsBand: .typical,
+            emissionsMeasuredAt: measuredAt,
+            emissionsAreStale: false,
+            after: now
+        )
+
+        expect(
+            transitions.map(\.date) == [forecastSlotEnd, emissionsExpiry],
+            "The timeline must retain separate forecast and emissions transitions."
+        )
+        expect(
+            transitions.first?.hasFreshEmissions == true,
+            "A forecast-slot boundary must not expire a still-current emissions measurement."
+        )
+        expect(
+            transitions.last?.hasFreshEmissions == false,
+            "The emissions measurement must become stale only at its real expiry."
         )
     }
 

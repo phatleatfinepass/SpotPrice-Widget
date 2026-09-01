@@ -114,38 +114,32 @@ struct FinlandGridForecastProvider: TimelineProvider {
             emissions: emissionsAreFresh ? entry.emissions : entry.emissions.markingStale()
         )
 
-        var safetyDates: [Date] = []
-        if let slotEnd = GridConditionsSignal.currentForecastSlotEnd(
-            in: entry.presentation.forecastPoints,
-            at: now
-        ), slotEnd > now {
-            safetyDates.append(slotEnd)
-        }
-        if let measuredAt = entry.emissions.measuredAt {
-            let expiry = measuredAt.addingTimeInterval(GridConditionsSignal.emissionsValidity)
-            if expiry > now {
-                safetyDates.append(expiry)
-            }
-        }
-        guard let safetyDate = safetyDates.min() else { return [initialEntry] }
-
-        let presentation = result.map {
-            GridForecastPresentation.make(
-                points: $0.points,
-                at: safetyDate,
-                lastUpdated: $0.fetchedAt,
-                availableThrough: $0.availableThrough,
-                isStale: $0.isStale
-            ) ?? .unavailable(at: safetyDate)
-        } ?? .unavailable(at: safetyDate)
-        return [
-            initialEntry,
-            FinlandGridForecastEntry(
-                date: safetyDate,
+        let transitionEntries = GridConditionsSignal.timelineTransitions(
+            forecastPoints: entry.presentation.forecastPoints,
+            emissionsBand: entry.emissions.band,
+            emissionsMeasuredAt: entry.emissions.measuredAt,
+            emissionsAreStale: entry.emissions.isStale,
+            after: now
+        ).map { transition in
+            let presentation = result.map {
+                GridForecastPresentation.make(
+                    points: $0.points,
+                    at: transition.date,
+                    lastUpdated: $0.fetchedAt,
+                    availableThrough: $0.availableThrough,
+                    isStale: $0.isStale
+                ) ?? .unavailable(at: transition.date)
+            } ?? .unavailable(at: transition.date)
+            return FinlandGridForecastEntry(
+                date: transition.date,
                 presentation: presentation,
-                emissions: entry.emissions.markingStale()
-            ),
-        ]
+                emissions: transition.hasFreshEmissions
+                    ? entry.emissions
+                    : entry.emissions.markingStale()
+            )
+        }
+
+        return [initialEntry] + transitionEntries
     }
 
     private func refreshDate(
@@ -373,7 +367,9 @@ private struct GridEmissionsStatus: View {
     }
 
     private var statusText: String {
-        guard isFresh else { return "Data unavailable" }
+        guard isFresh else {
+            return emissions.gramsCO2PerKWh == nil ? "Data unavailable" : "Last reading"
+        }
         return switch emissions.band {
         case .cleaner: "Cleaner now"
         case .typical: "Usual range"

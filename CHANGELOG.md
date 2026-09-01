@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Grid Conditions now keeps renewable-slot transitions and live-emissions expiry as separate timeline events, preventing a 15-minute forecast boundary from marking a still-current CO₂ measurement unavailable.
+- An expired cached CO₂ value is labeled **Last reading**; **Data unavailable** is reserved for a genuinely missing measurement.
+
+### Verified
+
+- Grid Conditions signal tests reproduce the forecast-boundary-before-emissions-expiry case, and macOS Debug plus Universal Release builds compile the corrected WidgetKit timeline.
+
 ## 1.2.5 - 2026-09-01
 
 ### Fixed
