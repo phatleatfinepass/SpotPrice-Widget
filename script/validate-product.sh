@@ -22,6 +22,7 @@ for script_path in \
   "$repo_root/script/test-grid-conditions.sh" \
   "$repo_root/script/test-product-maintenance.sh" \
   "$repo_root/script/test-software-update.sh" \
+  "$repo_root/script/test-update-handoff.sh" \
   "$repo_root/script/test-uninstaller-integration.sh" \
   "$repo_root/script/test-uninstaller-target.sh" \
   "$repo_root/script/verify-update-signature.sh" \
@@ -62,9 +63,12 @@ for required_path in \
   "$repo_root/SpotPriceWidgetUninstaller/UninstallSecurity.swift" \
   "$repo_root/SpotPriceWidgetUninstaller/UninstallServiceProtocol.swift" \
   "$repo_root/SpotPriceWidgetUninstaller/UninstallTarget.swift" \
+  "$repo_root/SpotPriceWidgetUninstaller/UpdateHostLifecycle.swift" \
   "$repo_root/SpotPriceWidgetUninstaller/UpdateInstaller.swift" \
   "$repo_root/SpotPriceWidgetUninstaller/UpdateTrust.swift" \
+  "$repo_root/SpotPriceWidgetUninstaller/WidgetRegistrationPaths.swift" \
   "$repo_root/SpotPriceWidgetUninstaller/main.swift" \
+  "$repo_root/script/test-update-handoff.sh" \
   "$repo_root/script/sign-release-update.sh" \
   "$repo_root/script/verify-update-signature.sh" \
   "$repo_root/script/verify-update-signature.swift" \
@@ -198,6 +202,24 @@ for installer_path in \
   grep -Fq 'unregister_competing_apps "$target_app"' "$installer_path" \
     || fail "installers must remove competing Launch Services registrations"
 done
+
+update_reply_line="$(grep -nF 'reply(preparedUpdate.expectedVersion, nil)' \
+  "$repo_root/SpotPriceWidgetUninstaller/main.swift" | cut -d: -f1)"
+update_commit_line="$(grep -nF '_ = try await UpdateInstaller.commit(' \
+  "$repo_root/SpotPriceWidgetUninstaller/main.swift" | cut -d: -f1)"
+[[ -n "$update_reply_line" && -n "$update_commit_line" && "$update_reply_line" -lt "$update_commit_line" ]] \
+  || fail "the updater must hand control back to the host before committing the replacement"
+
+host_exit_line="$(grep -nF 'try await UpdateHostLifecycle.waitForExit' \
+  "$repo_root/SpotPriceWidgetUninstaller/UpdateInstaller.swift" | cut -d: -f1)"
+replacement_line="$(grep -nF 'try fileManager.moveItem(at: prepared.currentApp, to: prepared.backupApp)' \
+  "$repo_root/SpotPriceWidgetUninstaller/UpdateInstaller.swift" | cut -d: -f1)"
+[[ -n "$host_exit_line" && -n "$replacement_line" && "$host_exit_line" -lt "$replacement_line" ]] \
+  || fail "the updater must wait for the authenticated host to exit before replacing its bundle"
+
+grep -Fq 'try UpdateRegistration.register(appURL: prepared.currentApp)' \
+  "$repo_root/SpotPriceWidgetUninstaller/UpdateInstaller.swift" \
+  || fail "the updater must register the replacement widget before relaunching"
 
 if git -C "$repo_root" grep -En \
   '(spctl[[:space:]]+--master-disable|xattr[[:space:]]+-[a-zA-Z]*d[^[:space:]]*[[:space:]]+com\.apple\.quarantine)' \

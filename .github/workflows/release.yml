@@ -92,6 +92,9 @@ jobs:
       - name: Test software update logic
         run: script/test-software-update.sh
 
+      - name: Test automatic update handoff
+        run: script/test-update-handoff.sh
+
       - name: Build disposable uninstall test bundle
         run: |
           xcodebuild -quiet \

@@ -3,9 +3,11 @@ import Foundation
 
 final class UninstallService: NSObject, SpotPriceWidgetUninstalling {
     private let containingAppURL: URL
+    private let callerProcessIdentifier: pid_t
 
-    init(containingAppURL: URL) {
+    init(containingAppURL: URL, callerProcessIdentifier: pid_t) {
         self.containingAppURL = containingAppURL
+        self.callerProcessIdentifier = callerProcessIdentifier
     }
 
     func moveContainingAppToTrash(
@@ -34,18 +36,49 @@ final class UninstallService: NSObject, SpotPriceWidgetUninstalling {
         withReply reply: @escaping (String?, String?) -> Void
     ) {
         Task {
+            let lease = UpdateTransactionLease()
             do {
-                let installedVersion = try await UpdateInstaller.install(
+                let preparedUpdate = try UpdateInstaller.prepare(
                     diskImageData: diskImageData,
                     signatureText: signatureText,
                     expectedVersion: expectedVersion,
                     containingAppURL: containingAppURL
                 )
-                reply(installedVersion, nil)
+                reply(preparedUpdate.expectedVersion, nil)
+                do {
+                    _ = try await UpdateInstaller.commit(
+                        preparedUpdate,
+                        callerProcessIdentifier: callerProcessIdentifier
+                    )
+                } catch {
+                    NSLog("Prepared update could not be committed: %@", error.localizedDescription)
+                }
             } catch {
                 reply(nil, error.localizedDescription)
             }
+            lease.end()
         }
+    }
+}
+
+private final class UpdateTransactionLease {
+    private let reason = "Completing a verified Finland Electricity Rates update"
+    private var isActive = true
+
+    init() {
+        ProcessInfo.processInfo.disableSuddenTermination()
+        ProcessInfo.processInfo.disableAutomaticTermination(reason)
+    }
+
+    func end() {
+        guard isActive else { return }
+        isActive = false
+        ProcessInfo.processInfo.enableAutomaticTermination(reason)
+        ProcessInfo.processInfo.enableSuddenTermination()
+    }
+
+    deinit {
+        end()
     }
 }
 
@@ -71,7 +104,10 @@ final class UninstallListenerDelegate: NSObject, NSXPCListenerDelegate {
         }
 
         newConnection.exportedInterface = NSXPCInterface(with: SpotPriceWidgetUninstalling.self)
-        newConnection.exportedObject = UninstallService(containingAppURL: containingAppURL)
+        newConnection.exportedObject = UninstallService(
+            containingAppURL: containingAppURL,
+            callerProcessIdentifier: newConnection.processIdentifier
+        )
         newConnection.resume()
         return true
     }

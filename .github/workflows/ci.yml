@@ -86,6 +86,10 @@ jobs:
         if: matrix.name == 'macOS'
         run: script/test-software-update.sh
 
+      - name: Test automatic update handoff
+        if: matrix.name == 'macOS'
+        run: script/test-update-handoff.sh
+
       - name: Build
         env:
           CODE_SIGNING_ALLOWED_FOR_PLATFORM: ${{ matrix.name == 'macOS' && 'YES' || 'NO' }}

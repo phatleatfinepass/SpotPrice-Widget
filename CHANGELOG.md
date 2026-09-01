@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Automatic updates now wait for the authenticated host process to exit before replacing and relaunching the app, preventing the old and new versions from appearing at the same time.
+- The updater explicitly refreshes Launch Services and WidgetKit registration for the replacement bundle, verifies the installed extension path, and restores the previous app and widget registration if relaunch fails.
+
+### Verified
+
+- CI and release validation now cover the host-exit handoff, its timeout behavior, PluginKit path parsing, and the required prepare → quit → replace → register → relaunch ordering.
+
 ## 1.2.4 - 2026-09-01
 
 ### Added

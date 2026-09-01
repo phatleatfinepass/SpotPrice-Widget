@@ -13,6 +13,7 @@ enum UpdateInstallError: LocalizedError {
     case invalidCodeSignature(OSStatus)
     case destinationUnavailable
     case replacementFailed
+    case widgetRegistrationFailed
     case updatedApplicationDidNotLaunch
 
     var errorDescription: String? {
@@ -37,6 +38,8 @@ enum UpdateInstallError: LocalizedError {
             "The current installation folder is not writable."
         case .replacementFailed:
             "The current app could not be replaced; the previous version was restored."
+        case .widgetRegistrationFailed:
+            "The updated app’s widget could not be registered; the previous version was restored."
         case .updatedApplicationDidNotLaunch:
             "The updated app did not stay open; the previous version was restored."
         }
@@ -70,12 +73,20 @@ struct UpdateVersion: Comparable {
 enum UpdateInstaller {
     private static let appName = "Finland Electricity Rates.app"
 
-    static func install(
+    struct PreparedUpdate {
+        let expectedVersion: String
+        let currentApp: URL
+        let stagedApp: URL
+        let backupApp: URL
+        let failedApp: URL
+    }
+
+    static func prepare(
         diskImageData: Data,
         signatureText: String,
         expectedVersion: String,
         containingAppURL: URL
-    ) async throws -> String {
+    ) throws -> PreparedUpdate {
         try UpdateTrust.verify(diskImageData, signatureText: signatureText)
 
         guard let expected = UpdateVersion(expectedVersion) else {
@@ -118,38 +129,74 @@ enum UpdateInstaller {
         let backupApp = parent.appendingPathComponent(".Finland Electricity Rates.backup-\(transactionID).app")
         let failedApp = parent.appendingPathComponent(".Finland Electricity Rates.failed-\(transactionID).app")
 
-        try fileManager.copyItem(at: sourceApp, to: stagedApp)
         do {
+            try fileManager.copyItem(at: sourceApp, to: stagedApp)
             try validateApp(stagedApp, expectedVersion: expectedVersion)
-            try fileManager.moveItem(at: currentApp, to: backupApp)
-            try fileManager.moveItem(at: stagedApp, to: currentApp)
         } catch {
             try? fileManager.removeItem(at: stagedApp)
-            if fileManager.fileExists(atPath: backupApp.path),
-               !fileManager.fileExists(atPath: currentApp.path) {
-                try? fileManager.moveItem(at: backupApp, to: currentApp)
-            }
+            throw error
+        }
+
+        return PreparedUpdate(
+            expectedVersion: expectedVersion,
+            currentApp: currentApp,
+            stagedApp: stagedApp,
+            backupApp: backupApp,
+            failedApp: failedApp
+        )
+    }
+
+    static func commit(
+        _ prepared: PreparedUpdate,
+        callerProcessIdentifier: pid_t
+    ) async throws -> String {
+        let fileManager = FileManager.default
+
+        do {
+            try await UpdateHostLifecycle.waitForExit(processIdentifier: callerProcessIdentifier)
+        } catch {
+            try? fileManager.removeItem(at: prepared.stagedApp)
             throw error
         }
 
         do {
-            let runningApplication = try await launchNewInstance(at: currentApp)
+            try? UpdateRegistration.unregister(appURL: prepared.currentApp)
+            try fileManager.moveItem(at: prepared.currentApp, to: prepared.backupApp)
+            try fileManager.moveItem(at: prepared.stagedApp, to: prepared.currentApp)
+        } catch {
+            try? fileManager.removeItem(at: prepared.stagedApp)
+            if fileManager.fileExists(atPath: prepared.backupApp.path),
+               !fileManager.fileExists(atPath: prepared.currentApp.path) {
+                try? fileManager.moveItem(at: prepared.backupApp, to: prepared.currentApp)
+                try? UpdateRegistration.register(appURL: prepared.currentApp)
+            }
+            throw UpdateInstallError.replacementFailed
+        }
+
+        do {
+            try UpdateRegistration.register(appURL: prepared.currentApp)
+            let runningApplication = try await launchApplication(at: prepared.currentApp)
             try await Task.sleep(for: .seconds(3))
             guard !runningApplication.isTerminated,
-                  runningApplication.bundleURL.map(UninstallTarget.canonical) == UninstallTarget.canonical(currentApp)
+                  runningApplication.bundleURL.map(UninstallTarget.canonical)
+                    == UninstallTarget.canonical(prepared.currentApp)
             else {
                 throw UpdateInstallError.updatedApplicationDidNotLaunch
             }
-            try fileManager.removeItem(at: backupApp)
-            return expectedVersion
+            try UpdateRegistration.verify(appURL: prepared.currentApp)
+            try fileManager.removeItem(at: prepared.backupApp)
+            return prepared.expectedVersion
         } catch {
-            if fileManager.fileExists(atPath: currentApp.path) {
-                try? fileManager.moveItem(at: currentApp, to: failedApp)
+            try? UpdateRegistration.unregister(appURL: prepared.currentApp)
+            if fileManager.fileExists(atPath: prepared.currentApp.path) {
+                try? fileManager.moveItem(at: prepared.currentApp, to: prepared.failedApp)
             }
-            if fileManager.fileExists(atPath: backupApp.path) {
-                try? fileManager.moveItem(at: backupApp, to: currentApp)
+            if fileManager.fileExists(atPath: prepared.backupApp.path) {
+                try? fileManager.moveItem(at: prepared.backupApp, to: prepared.currentApp)
+                try? UpdateRegistration.register(appURL: prepared.currentApp)
+                _ = try? await launchApplication(at: prepared.currentApp)
             }
-            try? fileManager.removeItem(at: failedApp)
+            try? fileManager.removeItem(at: prepared.failedApp)
             throw error
         }
     }
@@ -192,9 +239,9 @@ enum UpdateInstaller {
         }
     }
 
-    private static func launchNewInstance(at appURL: URL) async throws -> NSRunningApplication {
+    private static func launchApplication(at appURL: URL) async throws -> NSRunningApplication {
         let configuration = NSWorkspace.OpenConfiguration()
-        configuration.createsNewApplicationInstance = true
+        configuration.createsNewApplicationInstance = false
         configuration.activates = true
 
         return try await withCheckedThrowingContinuation { continuation in
@@ -208,5 +255,104 @@ enum UpdateInstaller {
                 }
             }
         }
+    }
+}
+
+private enum UpdateRegistration {
+    private static let widgetBundleIdentifier =
+        "personal.SpotPriceWidget.SpotPriceWidgetFinland"
+    private static let extensionRelativePath =
+        "Contents/PlugIns/SpotPriceWidgetFinlandExtension.appex"
+    private static let launchServicesTool = URL(
+        fileURLWithPath:
+            "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+    )
+    private static let pluginKitTool = URL(fileURLWithPath: "/usr/bin/pluginkit")
+
+    static func unregister(appURL: URL) throws {
+        let extensionURL = appURL.appendingPathComponent(extensionRelativePath, isDirectory: true)
+        _ = try? run(pluginKitTool, arguments: ["-r", extensionURL.path])
+        _ = try? run(launchServicesTool, arguments: ["-u", appURL.path])
+    }
+
+    static func register(appURL: URL) throws {
+        let extensionURL = appURL.appendingPathComponent(extensionRelativePath, isDirectory: true)
+        guard let extensionBundle = Bundle(url: extensionURL),
+              extensionBundle.bundleIdentifier == widgetBundleIdentifier
+        else {
+            throw UpdateInstallError.widgetRegistrationFailed
+        }
+
+        let canonicalExtension = UninstallTarget.canonical(extensionURL)
+        let registeredPaths = try registeredExtensionPaths()
+        for registeredPath in registeredPaths {
+            let registeredURL = UninstallTarget.canonical(URL(fileURLWithPath: registeredPath))
+            guard registeredURL != canonicalExtension else { continue }
+            _ = try? run(pluginKitTool, arguments: ["-r", registeredURL.path])
+
+            let competingApp = registeredURL
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+            if Bundle(url: competingApp)?.bundleIdentifier == UninstallTarget.hostBundleIdentifier {
+                _ = try? run(launchServicesTool, arguments: ["-u", competingApp.path])
+            }
+        }
+
+        _ = try run(launchServicesTool, arguments: ["-f", "-R", appURL.path])
+        _ = try run(pluginKitTool, arguments: ["-a", extensionURL.path])
+        try verify(appURL: appURL)
+    }
+
+    static func verify(appURL: URL) throws {
+        let expected = UninstallTarget.canonical(
+            appURL.appendingPathComponent(extensionRelativePath, isDirectory: true)
+        )
+
+        for _ in 0..<12 {
+            let registered = try registeredExtensionPaths()
+                .map { UninstallTarget.canonical(URL(fileURLWithPath: $0)) }
+            if registered.contains(expected) {
+                return
+            }
+            Thread.sleep(forTimeInterval: 0.15)
+        }
+        throw UpdateInstallError.widgetRegistrationFailed
+    }
+
+    private static func registeredExtensionPaths() throws -> [String] {
+        let output = try run(
+            pluginKitTool,
+            arguments: ["-m", "-A", "-D", "-v", "-i", widgetBundleIdentifier],
+            captureOutput: true
+        )
+        return WidgetRegistrationPaths.extensionPaths(from: output)
+    }
+
+    @discardableResult
+    private static func run(
+        _ executableURL: URL,
+        arguments: [String],
+        captureOutput: Bool = false
+    ) throws -> String {
+        let process = Process()
+        let outputPipe = Pipe()
+        process.executableURL = executableURL
+        process.arguments = arguments
+        process.standardOutput = captureOutput ? outputPipe : FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            throw UpdateInstallError.widgetRegistrationFailed
+        }
+        guard process.terminationStatus == 0 else {
+            throw UpdateInstallError.widgetRegistrationFailed
+        }
+        guard captureOutput else { return "" }
+        let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        return String(decoding: data, as: UTF8.self)
     }
 }
