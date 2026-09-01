@@ -54,6 +54,8 @@ The packaging script also calls the exact embedded relay endpoint and requires a
 
 The first release containing this signed transactional updater is a one-time bridge: installations on 1.2.1 or earlier still use the older installer-opening flow and must install that bridge release manually. After the bridge is installed, later signed releases can complete the in-place flow automatically.
 
+The architecture, process-handoff invariant, widget-registration repair, icon pipeline, and adopted failure findings are maintained in the [app, widget, icon, and update engineering playbook](APP-WIDGET-ENGINEERING-PLAYBOOK.md).
+
 ## Optional Developer ID mode
 
 `SPOT_PRICE_DISTRIBUTION=developer-id` remains available for a future paid distribution path. It requires a Developer ID Application identity plus notarization credentials or a `notarytool` Keychain profile. See the variables checked by `script/package-release.sh` and store every credential outside the repository.

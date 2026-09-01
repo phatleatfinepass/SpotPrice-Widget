@@ -62,6 +62,8 @@ Contributions should target `maintenance`. See [CONTRIBUTING.md](CONTRIBUTING.md
 
 Product information: [Privacy](PRIVACY.md) · [Support](SUPPORT.md) · [Changelog](CHANGELOG.md)
 
+Engineering documentation: [App, widget, icon, and update playbook](docs/APP-WIDGET-ENGINEERING-PLAYBOOK.md) · [Release process](docs/RELEASE.md) · [Grid Conditions signal](docs/GRID-CONDITIONS.md)
+
 ## Build from source
 
 ```bash
