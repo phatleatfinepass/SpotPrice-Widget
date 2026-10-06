@@ -59,6 +59,8 @@ The conservative renewable classifier and its visual semantics are documented in
 - `maintenance` is the integration line for fixes and upcoming releases.
 
 Contributions should target `maintenance`. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Read engineering instructions from the same verified checkout as the source; a
+worktree's documentation describes that branch until its changes are integrated.
 
 Product information: [Privacy](PRIVACY.md) · [Support](SUPPORT.md) · [Changelog](CHANGELOG.md)
 
@@ -66,12 +68,9 @@ Engineering documentation: [App, widget, icon, and update playbook](docs/APP-WID
 
 ## Build from source
 
-```bash
-git clone --branch maintenance https://github.com/phatleatfinepass/SpotPrice-Widget.git
-cd SpotPrice-Widget
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-  xcodebuild -project SpotPriceWidget.xcodeproj \
-  -scheme SpotPriceWidget \
-  -destination 'platform=macOS' \
-  build
-```
+Use the [managed validation and build workflow](CONTRIBUTING.md#before-submitting)
+from the verified checkout root. It builds the complete macOS app and iOS Simulator
+target with explicit in-checkout operation directories for Xcode output, temporary
+files and npm cache. The workflow also owns assessment, required evidence retention
+and disposable cleanup; generated release packages remain retained deliverables
+when requested for handover.

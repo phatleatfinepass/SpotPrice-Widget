@@ -49,15 +49,13 @@ A rename is not complete until the built app, embedded extension, scripts, relea
 
 ### Build the complete product, not only the executable
 
-Use the scheme so Xcode builds and embeds all targets:
-
-```bash
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-  xcodebuild -project SpotPriceWidget.xcodeproj \
-  -scheme SpotPriceWidget \
-  -destination 'platform=macOS' \
-  build
-```
+Use the `SpotPriceWidget` scheme so Xcode builds and embeds all targets. Follow
+[the managed validation and build workflow](../CONTRIBUTING.md#before-submitting)
+from the actual checkout root. It allocates an operation, routes `TMPDIR`, npm
+cache and explicit `-derivedDataPath` directories inside that operation, and
+launches through the context and lifecycle guards. Assess output, retain required
+support, then finish the disposable run; do not leave Xcode's default external
+DerivedData location as an implicit producer destination.
 
 Never update only `Contents/MacOS/SpotPriceWidget`. A development build can depend on companion dynamic libraries, the widget extension, resources, and the XPC service. Install or replace the complete `.app` bundle.
 
@@ -71,6 +69,12 @@ Never update only `Contents/MacOS/SpotPriceWidget`. A development build can depe
 4. applies nested ad-hoc signatures in dependency order;
 5. verifies the complete signature tree;
 6. creates `Finland-Electricity-Rates.dmg` and its SHA-256 checksum.
+
+Classify packaging `dist/` output before production. The project owns generated
+packages through assessment; requested or accepted release artifacts and their
+checksums/signatures are retained deliverables with their supporting evidence.
+They are not removed by a disposable-run finish or because the chat ends.
+Rebuildable leftovers require their own exact authorized cleanup decision.
 
 Ad-hoc signing protects bundle integrity but does not provide a verified Apple developer identity or notarization. A first-time user may still need **Privacy & Security → Open Anyway**. The product must never disable Gatekeeper or remove quarantine metadata to hide that trade-off.
 

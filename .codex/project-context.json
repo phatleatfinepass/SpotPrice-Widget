@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "project_id": "spot-price",
+  "entry_docs": [
+    "README.md",
+    "CONTRIBUTING.md",
+    "docs/APP-WIDGET-ENGINEERING-PLAYBOOK.md"
+  ],
+  "operational_record": null,
+  "integration_target": "refs/heads/maintenance",
+  "task_id": null,
+  "current_id": null,
+  "gate_id": null
+}

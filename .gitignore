@@ -18,3 +18,6 @@ xcuserdata/
 .dev.vars.*
 .wrangler/
 *.xcconfig.local
+
+# Chat context metadata and disposable local operations.
+/outputs/local-work/
