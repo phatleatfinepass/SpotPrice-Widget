@@ -68,9 +68,27 @@ Engineering documentation: [App, widget, icon, and update playbook](docs/APP-WID
 
 ## Build from source
 
-Use the [managed validation and build workflow](CONTRIBUTING.md#before-submitting)
-from the verified checkout root. It builds the complete macOS app and iOS Simulator
-target with explicit in-checkout operation directories for Xcode output, temporary
-files and npm cache. The workflow also owns assessment, required evidence retention
-and disposable cleanup; generated release packages remain retained deliverables
-when requested for handover.
+Codex on the maintained Mac must use the
+[managed validation and build workflow](CONTRIBUTING.md#before-submitting).
+The following portable instructions are for other Macs and require the full
+Xcode app:
+
+```bash
+git clone --branch maintenance https://github.com/phatleatfinepass/SpotPrice-Widget.git
+cd SpotPrice-Widget
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+  xcodebuild -project SpotPriceWidget.xcodeproj \
+  -scheme SpotPriceWidget \
+  -destination 'platform=macOS' \
+  -derivedDataPath "$PWD/DerivedData/contributor-macOS" \
+  CODE_SIGNING_ALLOWED=NO build
+```
+
+This builds the complete application for development verification. Keep the
+generated output until it has been inspected; requested packages and evidence
+remain retained deliverables. The build directory is rebuildable and may be
+removed when its owner no longer needs it. Git ignore status alone is not a
+cleanup decision.
+
+Before contributing, also run the
+[portable checks](CONTRIBUTING.md#portable-checks-on-other-macs).

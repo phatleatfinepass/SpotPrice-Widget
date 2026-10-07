@@ -27,6 +27,41 @@ Review source, related docs and required evidence together against the receiving
 branch. Bounded routing and target checks do not establish semantic integration or
 release readiness; the checks below and the release process still apply.
 
+## Portable checks on other Macs
+
+Contributors outside the maintained Codex environment do not need the local
+`codex-*` helpers. Use the full Xcode app and Node.js/npm. From the checkout root,
+complete the [macOS build](README.md#build-from-source), then run:
+
+```bash
+(
+  set -euo pipefail
+  contributor_output="$PWD/DerivedData/contributor-checks"
+  mkdir -p "$contributor_output/tmp" "$contributor_output/npm-cache"
+  export TMPDIR="$contributor_output/tmp/"
+  export npm_config_cache="$contributor_output/npm-cache"
+  export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+
+  script/test-grid-conditions.sh
+  script/validate-product.sh
+  (cd backend/grid-emissions-relay && npm ci --ignore-scripts && npm run check)
+  xcodebuild -quiet -project SpotPriceWidget.xcodeproj \
+    -scheme SpotPriceWidget \
+    -destination 'generic/platform=iOS Simulator' \
+    -derivedDataPath "$contributor_output/DerivedData-iOS" \
+    CODE_SIGNING_ALLOWED=NO build
+)
+```
+
+Inspect failures and preserve any evidence needed for the contribution before
+removing rebuildable output. `DerivedData/contributor-checks/` belongs to this
+validation operation; the relay's `node_modules/` is a separate dependency
+installation. Neither is deleted automatically by these instructions.
+The layout, credential and release requirements below still apply.
+
+Codex on the maintained Mac must use the managed workflow below, including its
+context binding, placement checks, assessment and guarded cleanup.
+
 ## Before submitting
 
 Run from the verified checkout root with the full Xcode app. For Codex on the
