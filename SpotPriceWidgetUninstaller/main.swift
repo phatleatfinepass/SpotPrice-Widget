@@ -60,6 +60,25 @@ final class UninstallService: NSObject, SpotPriceWidgetUninstalling {
         }
     }
 
+    // A new selector cannot accidentally invoke the old resident helper's
+    // destructive registration repair during an incoming update handoff.
+    func prepareWidgetForCurrentBuild(
+        withReply reply: @escaping (String?) -> Void
+    ) {
+        Task {
+            do {
+                let appURL = try UninstallTarget.validatedAppURL(containingAppURL)
+                try await WidgetExtensionLifecycle.terminateRunningExtension(
+                    in: appURL, predatingHost: callerProcessIdentifier
+                )
+                // Preserve the registration and trust established by host launch.
+                reply(nil)
+            } catch {
+                reply(error.localizedDescription)
+            }
+        }
+    }
+
     func repairWidgetRegistration(
         withReply reply: @escaping (String?) -> Void
     ) {

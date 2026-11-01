@@ -2,7 +2,7 @@
 
 ## Before reporting a problem
 
-1. Open **Finland Electricity Rates** and press Refresh.
+1. After a macOS update, open **Finland Electricity Rates** once and press Refresh. Opening the host lets macOS rediscover the embedded widgets; allow a short time for fresh content.
 2. Confirm the Mac is connected to the internet.
 3. Use **Danger Zone → Reset Widget Data…** to clear rebuildable app data and request fresh WidgetKit timelines.
 4. Close and reopen the widget gallery after installing an update.

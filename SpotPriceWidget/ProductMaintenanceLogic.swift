@@ -1,6 +1,33 @@
 #if os(macOS)
 import Foundation
 
+/// Prepare a new build once; ordinary launches only request fresh timelines.
+@MainActor
+enum ProductWidgetStartup {
+    static let preparedBuildKey = "widget-prepared-build-v1"
+
+    static func refresh(
+        build: String,
+        preparedBuild: String?,
+        markPrepared: (String) -> Void,
+        prepare: () async throws -> Void,
+        reload: () -> Void
+    ) async throws {
+        if preparedBuild != build {
+            do {
+                try await prepare()
+                markPrepared(build)
+            } catch {
+                // A helper failure must not suppress an otherwise healthy widget.
+                // Keep the marker unchanged so preparation can retry next launch.
+                reload()
+                throw error
+            }
+        }
+        reload()
+    }
+}
+
 enum ProductUninstallValidationError: LocalizedError {
     case missingApplication
     case notApplication
@@ -64,6 +91,10 @@ protocol SpotPriceWidgetUninstalling {
     )
 
     func restartWidgetRegistration(
+        withReply reply: @escaping (_ errorMessage: String?) -> Void
+    )
+
+    func prepareWidgetForCurrentBuild(
         withReply reply: @escaping (_ errorMessage: String?) -> Void
     )
 }
@@ -135,9 +166,22 @@ enum ProductWidgetRegistrationClientError: LocalizedError {
 }
 
 enum ProductWidgetRegistrationClient {
-    static func repair() async throws {
+    static func prepareCurrentBuild() async throws {
+        try await request { proxy, reply in proxy.prepareWidgetForCurrentBuild(withReply: reply) }
+    }
+
+#if DEBUG
+    // Disposable-copy integration coverage for explicit registration repair.
+    static func repairForIntegrationTest() async throws {
+        try await request { proxy, reply in proxy.repairWidgetRegistration(withReply: reply) }
+    }
+#endif
+
+    fileprivate typealias Operation = (SpotPriceWidgetUninstalling, @escaping (String?) -> Void) -> Void
+
+    private static func request(_ operation: @escaping Operation) async throws {
         try await withCheckedThrowingContinuation { continuation in
-            let request = ProductWidgetRegistrationRequest(continuation: continuation)
+            let request = ProductWidgetRegistrationRequest(operation: operation, continuation: continuation)
             request.start()
         }
     }
@@ -257,11 +301,13 @@ private final class ProductUninstallerRequest: @unchecked Sendable {
 }
 
 private final class ProductWidgetRegistrationRequest: @unchecked Sendable {
+    private let operation: ProductWidgetRegistrationClient.Operation
     private let lock = NSLock()
     private var continuation: CheckedContinuation<Void, Error>?
     private var connection: NSXPCConnection?
 
-    init(continuation: CheckedContinuation<Void, Error>) {
+    init(operation: @escaping ProductWidgetRegistrationClient.Operation, continuation: CheckedContinuation<Void, Error>) {
+        self.operation = operation
         self.continuation = continuation
     }
 
@@ -280,7 +326,7 @@ private final class ProductWidgetRegistrationRequest: @unchecked Sendable {
             return
         }
 
-        proxy.restartWidgetRegistration { [self] errorMessage in
+        operation(proxy) { [self] errorMessage in
             if let errorMessage, !errorMessage.isEmpty {
                 finish(.failure(ProductWidgetRegistrationClientError.unavailable(errorMessage)))
             } else {

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.9 - 2026-11-01
+
+### Fixed
+
+- Normal macOS app launches preserve trusted widget registration and resident widget processes. Compatibility cleanup for older updaters runs once per build without unregistering the app. Failed preparation remains retryable and still requests fresh timelines.
+- Startup integration verification now uses normal app launches and checks both widget timelines, registration identity, and process continuity.
+
 ## 1.2.8 - 2026-09-01
 
 ### Changed
