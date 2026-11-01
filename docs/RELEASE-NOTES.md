@@ -1,13 +1,9 @@
-# Finland Electricity Rates 1.2.8
+# Finland Electricity Rates 1.2.9
 
-Version 1.2.8 completes the **App Management** layout with three equal-width horizontal actions. **Check for Updates**, **Reset**, and **Uninstall** now share the same height, corner geometry, and baseline, with concise descriptions directly beneath the maintenance controls.
+This update fixes a startup issue that could leave the desktop widgets blank after upgrading macOS. Opening Finland Electricity Rates now requests fresh widget content and preserves the registration macOS established for the app. Subsequent launches of the same build leave the running widget process alone.
 
-The release also fixes widgets that appeared unchanged after several successful app updates. macOS could keep the old widget-extension process alive after replacing the application bundle, so WidgetKit continued executing pre-update code from memory. The updater now stops only the exact extension embedded in Finland Electricity Rates before replacement, re-registers the new extension, and reloads both timelines.
+A one-time process handoff keeps updates from older versions compatible without unregistering the app. The signed updater still replaces the complete app and retains rollback protection during an update.
 
-A delayed, retryable first-launch handoff allows this repair to work when upgrading from 1.2.7, whose older helper may still be finishing the update transaction. The process match uses the complete canonical executable path and does not stop Debug builds or unrelated app copies.
+On version 1.2.8, open **Finland Electricity Rates → Check for Updates…** and select **Install Update…**. Your existing widgets can stay on the desktop; there is no need to uninstall the app, remove the widgets, or reset their data.
 
-The release gate covers exact-process lifecycle tests, product metadata, maintenance safeguards, updater trust and handoff, widget registration, uninstall target resolution, relay validation, signed Debug compilation, and Universal macOS packaging.
-
-The release supports macOS 26.5 or later on Apple silicon and Intel Macs. It is a free direct release: the bundles are ad-hoc signed for integrity but are not Apple-notarized and do not carry a paid Developer ID identity. A first installation can still require **System Settings → Privacy & Security → Open Anyway**.
-
-The release contains the disk image, its SHA-256 checksum, and the detached project update signature used by the in-app updater.
+The release supports macOS 26.5 or later on Apple silicon and Intel Macs. The Universal app and its embedded components are ad-hoc signed for integrity. The in-app updater verifies the project’s detached Ed25519 signature before installing the new version.

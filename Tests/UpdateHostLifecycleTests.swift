@@ -3,6 +3,13 @@ import Foundation
 @main
 struct UpdateHostLifecycleTests {
     static func main() async {
+        if CommandLine.arguments.dropFirst() == ["--widget-process-fixture"] {
+            // Copy a locally built executable, not an Apple platform binary:
+            // macOS can kill a relocated /bin/sleep for a launch-constraint violation.
+            FileHandle.standardOutput.write(Data([1]))
+            try? await Task.sleep(for: .seconds(30))
+            return
+        }
         await testWaitsForTheExactProcessToExit()
         await testTimesOutWithoutReplacingWhileTheProcessLives()
         await testStopsOnlyTheExactWidgetExecutable()
@@ -29,15 +36,20 @@ struct UpdateHostLifecycleTests {
                 at: competingURL.deletingLastPathComponent(),
                 withIntermediateDirectories: true
             )
-            try fileManager.copyItem(at: URL(fileURLWithPath: "/bin/sleep"), to: executableURL)
-            try fileManager.copyItem(at: URL(fileURLWithPath: "/bin/sleep"), to: competingURL)
+            let fixture = URL(fileURLWithPath: CommandLine.arguments[0])
+            try fileManager.copyItem(at: fixture, to: executableURL)
+            try fileManager.copyItem(at: fixture, to: competingURL)
 
             let widgetProcess = Process()
             widgetProcess.executableURL = executableURL
-            widgetProcess.arguments = ["5"]
+            widgetProcess.arguments = ["--widget-process-fixture"]
+            let widgetReady = Pipe()
+            widgetProcess.standardOutput = widgetReady
             let competingProcess = Process()
             competingProcess.executableURL = competingURL
-            competingProcess.arguments = ["5"]
+            competingProcess.arguments = ["--widget-process-fixture"]
+            let competingReady = Pipe()
+            competingProcess.standardOutput = competingReady
             try widgetProcess.run()
             try competingProcess.run()
             defer {
@@ -46,21 +58,33 @@ struct UpdateHostLifecycleTests {
                 try? fileManager.removeItem(at: root)
             }
 
+            // Prove both fixtures actually started before inspecting process identity.
+            guard try widgetReady.fileHandleForReading.read(upToCount: 1) == Data([1]),
+                  try competingReady.fileHandleForReading.read(upToCount: 1) == Data([1])
+            else { fail("Both widget process fixtures must start.") }
+
+            // Start the host between two instances at the *same* canonical
+            // widget path: only the pre-host instance may be a legacy resident.
+            let host = try startReadyFixture(at: fixture)
+            defer { if host.isRunning { host.terminate() } }
+            let freshWidget = try startReadyFixture(at: executableURL)
+            defer { if freshWidget.isRunning { freshWidget.terminate() } }
             try await WidgetExtensionLifecycle.terminateRunningExtension(
-                in: appURL,
-                timeout: 1,
-                pollInterval: 0.02
+                in: appURL, predatingHost: host.processIdentifier, timeout: 1, pollInterval: 0.02
             )
             widgetProcess.waitUntilExit()
+            expect(
+                widgetProcess.terminationReason == .uncaughtSignal
+                    && (widgetProcess.terminationStatus == SIGTERM || widgetProcess.terminationStatus == SIGKILL),
+                "Build preparation must stop the widget that predates the new host."
+            )
+            expect(freshWidget.isRunning, "The newly launched widget must survive build preparation.")
+            expect(competingProcess.isRunning, "An unrelated copy must survive build preparation.")
 
-            expect(
-                !widgetProcess.isRunning,
-                "The exact embedded widget process must stop before replacement."
-            )
-            expect(
-                competingProcess.isRunning,
-                "A process with the same role outside the target app must remain running."
-            )
+            try await WidgetExtensionLifecycle.terminateRunningExtension(in: appURL, timeout: 1, pollInterval: 0.02)
+            freshWidget.waitUntilExit()
+            expect(freshWidget.terminationReason == .uncaughtSignal, "Actual replacement must still stop the exact widget.")
+            expect(competingProcess.isRunning, "Actual replacement must preserve the unrelated copy.")
             expect(
                 !WidgetExtensionLifecycle.matches(
                     processExecutablePath: competingURL.path,
@@ -72,6 +96,19 @@ struct UpdateHostLifecycleTests {
             try? fileManager.removeItem(at: root)
             fail("The widget process handoff failed: \(error.localizedDescription)")
         }
+    }
+
+    private static func startReadyFixture(at url: URL) throws -> Process {
+        let process = Process()
+        let ready = Pipe()
+        process.executableURL = url
+        process.arguments = ["--widget-process-fixture"]
+        process.standardOutput = ready
+        try process.run()
+        guard try ready.fileHandleForReading.read(upToCount: 1) == Data([1]) else {
+            fail("The process fixture must start.")
+        }
+        return process
     }
 
     private static func testWaitsForTheExactProcessToExit() async {

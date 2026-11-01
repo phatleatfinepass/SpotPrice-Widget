@@ -143,7 +143,7 @@ The currently installed app executes the updater. Therefore, a release that fixe
 1. verify `N → N+1` delivers the new updater safely enough;
 2. verify `N+1 → N+2` exercises the new behavior end to end.
 
-Version 1.2.2 was the signed transactional-updater bridge. Version 1.2.5 added the clean host-process handoff and launch-time widget-registration repair. Version 1.2.8 adds exact widget-process termination. Because 1.2.7's helper installs 1.2.8, the replacement host waits for that incoming transaction to finish, calls a new restart selector, retries if the old helper still owns the service, then reloads every timeline. Future updater work must retain an explicit bridge test instead of assuming the new code controls the incoming update.
+Version 1.2.2 was the signed transactional-updater bridge. Version 1.2.5 added the clean host-process handoff and launch-time widget-registration repair. Version 1.2.8 added exact widget-process termination. Its original unconditional startup registration repair is superseded by the once-per-build, registration-preserving handoff described below. Because an older helper installs the replacement, the new host waits for the incoming transaction, uses a new process-only selector, retries if an old helper owns the service, then requests fresh timelines. Future updater work must retain an explicit bridge test instead of assuming the new code controls the incoming update.
 
 ### Release gates
 
@@ -210,17 +210,34 @@ A valid `.appex` on disk does not prove the widget gallery is using it. The auth
 
 The registered path must be the exact extension inside the canonical installed app—not DerivedData, a mounted DMG, a temporary update stage, or an older installation.
 
-The maintenance helper repairs registration by:
+### Preserve registration on ordinary startup
 
-1. validating the exact containing app and widget identifiers;
-2. unregistering the current extension path;
-3. stopping only the resident process whose canonical executable path matches that embedded extension;
-4. removing competing registrations for the same widget identifier;
-5. registering the host with `lsregister -f -R`;
-6. registering the embedded extension with `pluginkit -a`;
-7. polling until PluginKit reports the canonical extension path.
+Opening the host lets Launch Services discover and trust its embedded extension.
+Normal startup requests fresh WidgetKit timelines without unregistering the app,
+force-registering it, or terminating the widget process. `ProductWidgetStartup`
+records the successfully prepared `CFBundleVersion` in the host's UserDefaults.
 
-Registration repair begins in `SpotPriceWidgetApp.init`, not in a view's `.task`. macOS may restore the application without constructing a visible SwiftUI window, so product maintenance that depends on a view appearing is not reliable.
+The first launch of a different build (including a missing marker on first install)
+performs one bounded compatibility handoff for updates installed by pre-1.2.8
+helpers: after a short delay, the new `prepareWidgetForCurrentBuild` XPC selector
+stops only an exact embedded widget process that predates the authenticated host, preserves newer widget processes and registration, and requests
+fresh timelines. The new selector cannot invoke the old helper's destructive
+restart method. A failed handoff leaves the marker retryable and still requests
+reloads; the `WidgetStartup` log category records the result.
+
+Actual app replacement retains its existing stop/replace/register/rollback
+transaction. Healthy startup must never reuse that transaction's unregister step.
+The historical 1.2.8 startup repair below was superseded after macOS 27.2 logs
+showed it removing trusted registration and purging already-recovered content.
+
+The disposable-copy registration integration test remains a separate check for explicit repair.
+`script/test-widget-startup-integration.sh` verifies the installed app
+through normal Launch Services launches. Both desktop widgets must be present.
+After first-build preparation, two host relaunches must preserve the canonical
+registration UUID and resident process across the former five-second repair window,
+load fresh timelines for both widgets,
+and show no missing-extension or placeholder-purge errors. The script does not
+replace the app, change registration, reset data, or restart macOS widget services.
 
 ## 4. Make the app and widget logo
 
@@ -303,7 +320,7 @@ Adoption status: adopted. Verification status: passing on the 1.2.8 baseline. Re
 - Placeholders, snapshots, live timelines, stale states, and unavailable states are tested.
 - The widget is embedded and completely signed.
 - PluginKit resolves the extension inside the canonical installed app.
-- Registration repair works even when no SwiftUI window is restored.
+- Startup refresh works without a SwiftUI window; ordinary relaunch preserves registration and the resident widget process.
 
 ### Logo
 

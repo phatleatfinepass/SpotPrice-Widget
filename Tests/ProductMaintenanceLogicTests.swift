@@ -2,7 +2,8 @@ import Foundation
 
 @main
 struct ProductMaintenanceLogicTests {
-    static func main() throws {
+    @MainActor
+    static func main() async throws {
         let fileManager = FileManager.default
         let root = fileManager.temporaryDirectory
             .appendingPathComponent("spotprice-maintenance-\(UUID().uuidString)", isDirectory: true)
@@ -55,7 +56,40 @@ struct ProductMaintenanceLogicTests {
             fail("The client must connect only to the fixed embedded helper service.")
         }
 
+        try await testWidgetStartup()
         print("Product maintenance logic tests passed.")
+    }
+
+    @MainActor
+    private static func testWidgetStartup() async throws {
+        var preparedBuild: String?
+        let markPrepared = { preparedBuild = $0 }
+        var preparations = 0
+        var reloads = 0
+        let prepare = { preparations += 1 }
+        let reload = { reloads += 1 }
+
+        try await ProductWidgetStartup.refresh(build: "129", preparedBuild: preparedBuild, markPrepared: markPrepared, prepare: prepare, reload: reload)
+        guard preparations == 1, reloads == 1 else { fail("First build launch must prepare once and reload.") }
+        // A host relaunched after an OS upgrade sees the same persisted build.
+        try await ProductWidgetStartup.refresh(build: "129", preparedBuild: preparedBuild, markPrepared: markPrepared, prepare: prepare, reload: reload)
+        guard preparations == 1, reloads == 2 else { fail("Same-build relaunch must not restart the widget.") }
+        try await ProductWidgetStartup.refresh(build: "130", preparedBuild: preparedBuild, markPrepared: markPrepared, prepare: prepare, reload: reload)
+        guard preparations == 2, reloads == 3 else { fail("An updated build must prepare exactly once.") }
+
+        enum PreparationFailure: Error { case unavailable }
+        do {
+            try await ProductWidgetStartup.refresh(build: "131", preparedBuild: preparedBuild, markPrepared: markPrepared, prepare: {
+                throw PreparationFailure.unavailable
+            }, reload: reload)
+            fail("A helper failure must be reported.")
+        } catch PreparationFailure.unavailable { }
+        guard preparedBuild == "130", reloads == 4 else {
+            fail("Failure must preserve the old marker and still reload healthy timelines.")
+        }
+        try await ProductWidgetStartup.refresh(build: "131", preparedBuild: preparedBuild, markPrepared: markPrepared, prepare: prepare, reload: reload)
+        try await ProductWidgetStartup.refresh(build: "131", preparedBuild: preparedBuild, markPrepared: markPrepared, prepare: prepare, reload: reload)
+        guard preparations == 3, reloads == 6 else { fail("Retry must complete once; subsequent launches only reload.") }
     }
 
     private static func makeApp(

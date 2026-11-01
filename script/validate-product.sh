@@ -26,6 +26,7 @@ for script_path in \
   "$repo_root/script/test-uninstaller-integration.sh" \
   "$repo_root/script/test-uninstaller-target.sh" \
   "$repo_root/script/test-widget-registration-integration.sh" \
+  "$repo_root/script/test-widget-startup-integration.sh" \
   "$repo_root/script/verify-update-signature.sh" \
   "$repo_root/script/verify-grid-emissions-relay.sh"; do
   bash -n "$script_path" || fail "invalid shell syntax in $script_path"
@@ -72,6 +73,7 @@ for required_path in \
   "$repo_root/SpotPriceWidgetUninstaller/main.swift" \
   "$repo_root/script/test-update-handoff.sh" \
   "$repo_root/script/test-widget-registration-integration.sh" \
+  "$repo_root/script/test-widget-startup-integration.sh" \
   "$repo_root/script/sign-release-update.sh" \
   "$repo_root/script/verify-update-signature.sh" \
   "$repo_root/script/verify-update-signature.swift" \
@@ -235,12 +237,12 @@ grep -Fq 'try UpdateRegistration.register(appURL: prepared.currentApp)' \
 grep -Fq 'try await WidgetExtensionLifecycle.terminateRunningExtension(' \
   "$repo_root/SpotPriceWidgetUninstaller/UpdateInstaller.swift" \
   || fail "the updater must stop the exact old widget process before replacing the app"
-grep -Fq 'proxy.restartWidgetRegistration' \
+grep -Fq 'proxy.prepareWidgetForCurrentBuild' \
   "$repo_root/SpotPriceWidget/ProductMaintenanceLogic.swift" \
-  || fail "the replacement host must call the new widget-process restart operation"
-grep -Fq 'try await WidgetExtensionLifecycle.terminateRunningExtension(in: appURL)' \
+  || fail "the replacement host must call registration-preserving build preparation"
+grep -Fq 'in: appURL, predatingHost: callerProcessIdentifier' \
   "$repo_root/SpotPriceWidgetUninstaller/main.swift" \
-  || fail "startup registration repair must stop a widget process left resident by an older updater"
+  || fail "one-time build preparation must stop a widget process left resident by an older updater"
 
 if git -C "$repo_root" grep -En \
   '(spctl[[:space:]]+--master-disable|xattr[[:space:]]+-[a-zA-Z]*d[^[:space:]]*[[:space:]]+com\.apple\.quarantine)' \
